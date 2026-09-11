@@ -1,4 +1,4 @@
-import { geminiConfig } from '@/lib/ai/config'
+import { geminiConfig, TOKEN_BUDGETS } from '@/lib/ai/config'
 import { getGeminiClient, normalizeGeminiError } from '@/lib/ai/providers'
 import { evaluateSafety } from '@/lib/ai/safety'
 import { buildLanguageInstruction } from '@/lib/ai/prompts'
@@ -136,7 +136,10 @@ ${languageInstruction}`
 
     const textPart = `Analyze this document following the '${workflow}' workflow.${questionText}\nText content:\n${(input.text || 'Document attached as file.').slice(0, 5000)}`
 
-    let contents: any = textPart
+    type MultimodalPart =
+      | { inlineData: { mimeType: string; data: string }; text?: never }
+      | { text: string; inlineData?: never }
+    let contents: string | MultimodalPart[] = textPart
 
     if (input.fileBase64 && input.mimeType) {
       contents = [
@@ -159,6 +162,7 @@ ${languageInstruction}`
         systemInstruction,
         responseMimeType: 'application/json',
         temperature: 0.2,
+        maxOutputTokens: TOKEN_BUDGETS.documentAnalyze,
       },
     })
 

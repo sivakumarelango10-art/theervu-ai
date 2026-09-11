@@ -45,3 +45,25 @@ export function getGeminiConfig(overrides?: Partial<GeminiConfig>): GeminiConfig
     },
   }
 }
+
+/**
+ * Intent-based token budgets.
+ *
+ * Most conversational queries do not need the full 4096-token budget.
+ * Reducing max tokens for simple chat lowers latency and AI provider cost
+ * without sacrificing quality for longer generation tasks.
+ */
+export const TOKEN_BUDGETS = {
+  /** Universal assistant chat — answers are concise by design */
+  chat: 1024,
+  /** Preparation plans — need more tokens for full structured output */
+  plan: 2048,
+  /** Document explanation — moderate length needed */
+  documentExplain: 2048,
+  /** Document analysis (full multimodal) — may be longer */
+  documentAnalyze: 2048,
+  /** Translation — output is typically proportional to input */
+  translation: 1024,
+} as const
+
+export type TokenBudgetKey = keyof typeof TOKEN_BUDGETS

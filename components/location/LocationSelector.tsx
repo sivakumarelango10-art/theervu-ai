@@ -107,6 +107,7 @@ export function LocationSelector({
           type="button"
           onClick={handleClear}
           title="Reset to All India"
+          aria-label="Reset location to All India"
           className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-400 hover:text-slate-200 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/50 rounded-lg transition-colors"
         >
           <X className="h-3 w-3" />

@@ -100,6 +100,7 @@ export function AddApplicationModal({
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close track application modal"
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition-colors"
           >
             <X size={18} />

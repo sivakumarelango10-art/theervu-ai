@@ -52,14 +52,14 @@ export async function GET() {
       services: data || SEED_SERVICES,
       count: data?.length || SEED_SERVICES.length,
     })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 })
+  } catch (err: unknown) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Server error' }, { status: 500 })
   }
 }
 
 export async function POST(request: Request) {
   const auth = await verifyAdminUser()
-  if (!auth.isAdmin) {
+  if (!auth.isAdmin || !auth.user) {
     return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: auth.user ? 403 : 401 })
   }
 
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
       { service: data, message: 'Service published to verified registry' },
       { status: 201 }
     )
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 })
+  } catch (err: unknown) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Server error' }, { status: 500 })
   }
 }

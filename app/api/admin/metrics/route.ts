@@ -68,7 +68,7 @@ export async function GET() {
       warnings: envStatus.warnings,
       generatedAt: new Date().toISOString(),
     })
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json({ error: 'Failed to retrieve metrics' }, { status: 500 })
   }
 }

@@ -1,5 +1,5 @@
 import { getGeminiClient, normalizeGeminiError } from '@/lib/ai/providers'
-import { geminiConfig, getGeminiConfig, type GeminiConfig } from '@/lib/ai/config'
+import { geminiConfig, getGeminiConfig, TOKEN_BUDGETS, type GeminiConfig } from '@/lib/ai/config'
 import { evaluateSafety } from '@/lib/ai/safety'
 import { generateFallbackChatResponse } from '@/lib/ai/fallback'
 import {
@@ -14,6 +14,13 @@ import type {
   ChatMessage,
   NormalizedGeminiError,
 } from '@/lib/ai/types'
+
+/** Typed Gemini content part */
+type GeminiPart = { text: string }
+/** Typed Gemini content turn */
+type GeminiContentTurn = { role: 'user' | 'model'; parts: GeminiPart[] }
+/** Union: simple string or multi-turn conversation array */
+type GeminiContents = string | GeminiContentTurn[]
 
 export * from '@/lib/ai/config'
 export * from '@/lib/ai/types'
@@ -46,7 +53,7 @@ export async function executeGeminiWithRetry<T>(
       })
 
       return await Promise.race([operation(client), timeoutPromise])
-    } catch (error: any) {
+    } catch (error: unknown) {
       lastError = error
       const norm = normalizeGeminiError(error)
 
@@ -129,17 +136,17 @@ export async function generateChatResponse(
       systemInstruction += `\n\n${hybrid.hybridSystemContext}`
     }
 
-    let contents: any
+    let contents: GeminiContents
     if (history.length === 0) {
       contents = safety.sanitizedInput
     } else {
       contents = [
-        ...history.slice(-6).map((h) => ({
+        ...history.slice(-6).map((h): GeminiContentTurn => ({
           role: h.role === 'assistant' ? 'model' : 'user',
           parts: [{ text: h.content }],
         })),
         {
-          role: 'user',
+          role: 'user' as const,
           parts: [{ text: safety.sanitizedInput }],
         },
       ]
@@ -152,7 +159,8 @@ export async function generateChatResponse(
         config: {
           systemInstruction,
           temperature: geminiConfig.temperature,
-          maxOutputTokens: geminiConfig.maxOutputTokens,
+          // Use chat budget (1024) — conversational responses are concise by design
+          maxOutputTokens: TOKEN_BUDGETS.chat,
         },
       })
     })
@@ -190,7 +198,7 @@ export async function generateChatResponse(
       disclaimer: safety.disclaimer,
       isEmergency: false,
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     const norm = normalizeGeminiError(error)
     console.error(`Gemini Chat Error [${norm.code}], falling back to local engine:`, norm.userMessage)
     const fallback = generateFallbackChatResponse(question)

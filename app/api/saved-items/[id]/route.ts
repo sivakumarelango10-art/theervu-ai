@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { env } from '@/lib/config/env'
+import { logger } from '@/lib/observability/logger'
+
+const PRIVATE_CACHE_HEADERS = {
+  'Cache-Control': 'private, no-store, max-age=0',
+}
 
 export async function DELETE(
   _request: Request,
@@ -9,7 +14,7 @@ export async function DELETE(
   const { id } = await params
 
   if (!env.supabase.isConfigured) {
-    return NextResponse.json({ success: true, mode: 'local' })
+    return NextResponse.json({ success: true, mode: 'local' }, { headers: PRIVATE_CACHE_HEADERS })
   }
 
   try {
@@ -29,13 +34,13 @@ export async function DELETE(
       .eq('user_id', user.id)
 
     if (error) {
-      console.error('Saved item delete error:', error.message)
+      logger.error('Saved item delete error:', { error: error.message })
       return NextResponse.json({ error: 'Failed to delete saved item' }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true })
-  } catch (err: any) {
-    console.error('Saved item DELETE exception:', err?.message || err)
+    return NextResponse.json({ success: true }, { headers: PRIVATE_CACHE_HEADERS })
+  } catch (err: unknown) {
+    logger.error('Saved item DELETE exception:', { error: String(err) })
     return NextResponse.json({ error: 'Failed to delete saved item' }, { status: 500 })
   }
 }

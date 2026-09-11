@@ -3,6 +3,11 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { env } from '@/lib/config/env'
 import { getClientIp, checkRateLimit } from '@/lib/security/rate-limit'
+import { logger } from '@/lib/observability/logger'
+
+const PRIVATE_CACHE_HEADERS = {
+  'Cache-Control': 'private, no-store, max-age=0',
+}
 
 const updateReminderSchema = z.object({
   status: z.enum(['pending', 'completed', 'dismissed']).optional(),
@@ -31,7 +36,7 @@ export async function PATCH(
     )
   }
 
-  let json: any
+  let json: unknown
   try {
     json = await request.json()
   } catch {
@@ -72,7 +77,7 @@ export async function PATCH(
       .single()
 
     if (error) {
-      console.error('Update Reminder Error:', error.message)
+      logger.error('Update Reminder Error:', { error: error.message })
       return NextResponse.json({ error: 'Failed to update reminder' }, { status: 500 })
     }
 
@@ -80,9 +85,9 @@ export async function PATCH(
       return NextResponse.json({ error: 'Reminder not found' }, { status: 404 })
     }
 
-    return NextResponse.json(updated)
-  } catch (err: any) {
-    console.error('Update Reminder API Error:', err)
+    return NextResponse.json(updated, { headers: PRIVATE_CACHE_HEADERS })
+  } catch (err: unknown) {
+    logger.error('Update Reminder API Error:', { error: String(err) })
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }
@@ -103,7 +108,7 @@ export async function DELETE(
   }
 
   if (!env.supabase.isConfigured) {
-    return NextResponse.json({ success: true, id })
+    return NextResponse.json({ success: true, id }, { headers: PRIVATE_CACHE_HEADERS })
   }
 
   try {
@@ -123,13 +128,13 @@ export async function DELETE(
       .eq('user_id', user.id)
 
     if (error) {
-      console.error('Delete Reminder Error:', error.message)
+      logger.error('Delete Reminder Error:', { error: error.message })
       return NextResponse.json({ error: 'Failed to delete reminder' }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, id })
-  } catch (err: any) {
-    console.error('Delete Reminder API Error:', err)
+    return NextResponse.json({ success: true, id }, { headers: PRIVATE_CACHE_HEADERS })
+  } catch (err: unknown) {
+    logger.error('Delete Reminder API Error:', { error: String(err) })
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }

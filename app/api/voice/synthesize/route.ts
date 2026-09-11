@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { synthesizeSpeech } from '@/lib/voice/text-to-speech'
 import { getClientIp, checkRateLimit } from '@/lib/security/rate-limit'
+import { logger } from '@/lib/observability/logger'
 
 const synthesizeSchema = z.object({
   text: z.string().min(1).max(1000),
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
     )
   }
 
-  let json: any
+  let json: unknown
   try {
     json = await request.json()
   } catch {
@@ -46,8 +47,8 @@ export async function POST(request: Request) {
       provider: 'browser',
       message: 'Server speech synthesis not active. Using browser speech synthesis.',
     })
-  } catch (err: any) {
-    console.error('Voice Synthesize Error:', err)
+  } catch (err: unknown) {
+    logger.error('Voice Synthesize Error:', { error: String(err) })
     return NextResponse.json(
       { error: 'Failed to process voice synthesis.' },
       { status: 500 }

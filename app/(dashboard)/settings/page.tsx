@@ -77,7 +77,7 @@ export default function SettingsPage() {
         <div className="mx-auto flex h-16 max-w-[1180px] items-center justify-between px-5 lg:px-8">
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center" aria-label="TheervuAI home">
-              <img src={logoUrl} alt="TheervuAI" className="h-9 w-auto object-contain" />
+              <img src={logoUrl} alt="TheervuAI" width={144} height={36} className="h-9 w-auto object-contain" />
             </Link>
             <span className="hidden sm:inline text-xs font-semibold text-slate-400 uppercase tracking-widest">
               Profile & Preferences

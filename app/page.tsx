@@ -225,6 +225,8 @@ export default function Page() {
             <img
               src={logoUrl}
               alt="TheervuAI"
+              width={160}
+              height={40}
               className="h-10 w-auto object-contain transition-transform hover:scale-[1.02]"
             />
           </Link>
@@ -413,6 +415,7 @@ export default function Page() {
                                   type="button"
                                   onClick={toggleVoiceInput}
                                   aria-label={voiceInput.isListening ? "Stop voice dictation" : "Start voice dictation"}
+                                  aria-pressed={voiceInput.isListening}
                                   title={voiceInput.isListening ? "Listening... Click to stop" : "Voice dictation"}
                                   className={`rounded-md p-1.5 transition-colors ${
                                     voiceInput.isListening
@@ -449,6 +452,8 @@ export default function Page() {
                                 type="submit"
                                 size="sm"
                                 disabled={loading}
+                                aria-disabled={loading}
+                                aria-label={loading ? 'Generating AI response, please wait' : 'Submit your question'}
                                 className="h-8 gap-1.5 bg-[#12366b] px-3.5 text-xs font-semibold text-white hover:bg-[#0d2a55] whitespace-nowrap"
                               >
                                 {loading ? (
@@ -479,6 +484,9 @@ export default function Page() {
                       initial={{ opacity: 0, y: 6 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -6 }}
+                      role="status"
+                      aria-live="polite"
+                      aria-atomic="true"
                       className={`mt-4 rounded-xl border p-4 text-xs leading-relaxed space-y-3 ${
                         aiResponse.isEmergency
                           ? 'border-red-200 bg-red-50/60 text-red-900'
@@ -918,7 +926,7 @@ export default function Page() {
       <footer className="border-t border-slate-100 bg-white">
         <div className="mx-auto flex max-w-[1180px] flex-col gap-6 px-5 py-8 sm:flex-row sm:items-center sm:justify-between lg:px-8">
           <div className="flex items-center gap-3">
-            <img src={logoUrl} alt="TheervuAI" className="h-9 w-auto object-contain" />
+            <img src={logoUrl} alt="TheervuAI" width={144} height={36} className="h-9 w-auto object-contain" />
             <span className="hidden text-xs text-slate-400 sm:inline">
               Clarity for what comes next.
             </span>

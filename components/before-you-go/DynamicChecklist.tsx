@@ -309,6 +309,7 @@ export function DynamicChecklist({
         <button
           type="button"
           onClick={() => setFilter('all')}
+          aria-pressed={filter === 'all'}
           className={`rounded-full px-3.5 py-1 text-xs font-semibold transition-all ${
             filter === 'all'
               ? 'bg-[#12366b] text-white'
@@ -320,6 +321,7 @@ export function DynamicChecklist({
         <button
           type="button"
           onClick={() => setFilter('ready')}
+          aria-pressed={filter === 'ready'}
           className={`rounded-full px-3.5 py-1 text-xs font-semibold transition-all ${
             filter === 'ready'
               ? 'bg-emerald-700 text-white'
@@ -331,6 +333,7 @@ export function DynamicChecklist({
         <button
           type="button"
           onClick={() => setFilter('missing')}
+          aria-pressed={filter === 'missing'}
           className={`rounded-full px-3.5 py-1 text-xs font-semibold transition-all ${
             filter === 'missing'
               ? 'bg-rose-700 text-white'
@@ -343,6 +346,7 @@ export function DynamicChecklist({
           <button
             type="button"
             onClick={() => setFilter('unclear')}
+            aria-pressed={filter === 'unclear'}
             className={`rounded-full px-3.5 py-1 text-xs font-semibold transition-all ${
               filter === 'unclear'
                 ? 'bg-amber-600 text-white'
@@ -499,6 +503,8 @@ export function DynamicChecklist({
                           <button
                             type="button"
                             title="Mark Ready"
+                            aria-label={`Mark "${item.title}" as ready`}
+                            aria-pressed={isReady}
                             onClick={() => setItemReadiness(secIdx, actualItemIdx, 'ready')}
                             className={`p-1.5 rounded-lg text-xs font-medium transition-all ${
                               isReady
@@ -512,6 +518,8 @@ export function DynamicChecklist({
                           <button
                             type="button"
                             title="Mark Missing / Need to get"
+                            aria-label={`Mark "${item.title}" as missing`}
+                            aria-pressed={isMissing}
                             onClick={() => setItemReadiness(secIdx, actualItemIdx, 'missing')}
                             className={`p-1.5 rounded-lg text-xs font-medium transition-all ${
                               isMissing
@@ -525,6 +533,8 @@ export function DynamicChecklist({
                           <button
                             type="button"
                             title="Mark Unclear / Need clarification"
+                            aria-label={`Mark "${item.title}" as unclear`}
+                            aria-pressed={isUnclear}
                             onClick={() => setItemReadiness(secIdx, actualItemIdx, 'unclear')}
                             className={`p-1.5 rounded-lg text-xs font-medium transition-all ${
                               isUnclear
@@ -538,6 +548,8 @@ export function DynamicChecklist({
                           <button
                             type="button"
                             title="Add Note"
+                            aria-label={`Add note for "${item.title}"`}
+                            aria-expanded={editingNoteKey === itemKey}
                             onClick={() => {
                               setEditingNoteKey(editingNoteKey === itemKey ? null : itemKey)
                               setTempNote(item.userNotes || '')

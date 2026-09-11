@@ -23,7 +23,7 @@ export async function GET() {
       feedback: data || [],
       count: data?.length || 0,
     })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 })
+  } catch (err: unknown) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Server error' }, { status: 500 })
   }
 }

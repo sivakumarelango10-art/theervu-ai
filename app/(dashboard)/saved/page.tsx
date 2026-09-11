@@ -25,11 +25,48 @@ import {
 
 const logoUrl = '/theervu-logo.png'
 
+// ─── Types matching API response shapes ──────────────────────────────────────
+
+interface SavedItem {
+  id: string
+  title: string
+  item_type: string
+  url?: string
+  description?: string
+  created_at: string
+}
+
+interface Reminder {
+  id: string
+  title: string
+  description?: string
+  reminder_date: string
+  scheduled_for?: string
+  status: string
+  priority?: string
+  reminder_type?: string
+}
+
+interface Application {
+  id: string
+  service_name: string
+  status: string
+  reference_number?: string
+  applied_date?: string
+  submission_date?: string
+  authority?: string
+  notes?: string
+  portal_url?: string
+  next_action?: string
+  next_action_date?: string
+  next_action_deadline?: string
+}
+
 export default function SavedItemsPage() {
   const [activeTab, setActiveTab] = React.useState<'plans' | 'reminders' | 'applications'>('plans')
-  const [items, setItems] = React.useState<any[]>([])
-  const [reminders, setReminders] = React.useState<any[]>([])
-  const [applications, setApplications] = React.useState<any[]>([])
+  const [items, setItems] = React.useState<SavedItem[]>([])
+  const [reminders, setReminders] = React.useState<Reminder[]>([])
+  const [applications, setApplications] = React.useState<Application[]>([])
   const [loading, setLoading] = React.useState(true)
   const [reminderModalOpen, setReminderModalOpen] = React.useState(false)
   const [applicationModalOpen, setApplicationModalOpen] = React.useState(false)
@@ -149,7 +186,7 @@ export default function SavedItemsPage() {
         <div className="mx-auto flex h-16 max-w-[1180px] items-center justify-between px-5 lg:px-8">
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center" aria-label="TheervuAI home">
-              <img src={logoUrl} alt="TheervuAI" className="h-9 w-auto object-contain" />
+              <img src={logoUrl} alt="TheervuAI" width={144} height={36} className="h-9 w-auto object-contain" />
             </Link>
             <span className="hidden sm:inline text-xs font-semibold text-slate-400 uppercase tracking-widest">
               My Dashboard
@@ -516,7 +553,7 @@ export default function SavedItemsPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 {reminders.map((reminder) => {
                   const isDone = reminder.status === 'completed'
-                  const scheduledDate = new Date(reminder.scheduled_for)
+                  const scheduledDate = reminder.scheduled_for ? new Date(reminder.scheduled_for) : new Date(reminder.reminder_date)
                   const isPast = scheduledDate < new Date() && !isDone
 
                   return (

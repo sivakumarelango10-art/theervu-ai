@@ -61,7 +61,7 @@ export function scrubPII(text: string): string {
  * Records a sanitized operational metric.
  */
 export function recordMetric(event: Omit<MetricEvent, 'id' | 'timestamp'>): MetricEvent {
-  const sanitizedMetadata: Record<string, any> = {}
+  const sanitizedMetadata: Record<string, string | number | boolean | null> = {}
 
   if (event.metadata) {
     for (const [key, value] of Object.entries(event.metadata)) {

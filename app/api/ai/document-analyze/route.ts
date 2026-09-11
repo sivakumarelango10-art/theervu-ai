@@ -5,6 +5,7 @@ import {
   SUPPORTED_DOCUMENT_MIME_TYPES,
 } from '@/lib/ai/multimodal'
 import { getClientIp, checkRateLimit } from '@/lib/security/rate-limit'
+import { logger } from '@/lib/observability/logger'
 
 const documentAnalyzeRequestSchema = z.object({
   text: z.string().max(30000).optional(),
@@ -40,7 +41,7 @@ export async function POST(request: Request) {
     )
   }
 
-  let json: any
+  let json: unknown
   try {
     json = await request.json()
   } catch {
@@ -76,8 +77,8 @@ export async function POST(request: Request) {
     })
 
     return NextResponse.json(analysis)
-  } catch (error: any) {
-    console.error('Document Analysis API Error:', error)
+  } catch (error: unknown) {
+    logger.error('Document Analysis API Error:', { error: String(error) })
     return NextResponse.json(
       { error: 'Failed to analyze document. Please try again.' },
       { status: 500 }

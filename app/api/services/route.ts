@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { SEED_SERVICES, searchServices, getServiceBySlug } from '@/lib/data/services'
 import { env } from '@/lib/config/env'
 
+/** Public, stable data: 1-hour CDN cache, 10-min stale-while-revalidate */
+const PUBLIC_CACHE = 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=600'
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const slug = searchParams.get('slug')
@@ -15,18 +18,24 @@ export async function GET(request: Request) {
   if (slug) {
     const matched = getServiceBySlug(slug)
     if (matched) {
-      return NextResponse.json({ service: matched })
+      return NextResponse.json(
+        { service: matched },
+        { headers: { 'Cache-Control': PUBLIC_CACHE } }
+      )
     }
   }
 
   // If Supabase is not configured, use the verified deterministic catalog
   if (!env.supabase.isConfigured) {
     const services = searchServices(search || '', category, state, district)
-    return NextResponse.json({
-      services,
-      total: services.length,
-      source: 'verified_catalog',
-    })
+    return NextResponse.json(
+      {
+        services,
+        total: services.length,
+        source: 'verified_catalog',
+      },
+      { headers: { 'Cache-Control': PUBLIC_CACHE } }
+    )
   }
 
   try {
@@ -55,24 +64,33 @@ export async function GET(request: Request) {
     if (error || !data || data.length === 0) {
       // Graceful fallback to verified catalog
       const fallbackServices = searchServices(search || '', category, state, district)
-      return NextResponse.json({
+      return NextResponse.json(
+        {
+          services: fallbackServices,
+          total: fallbackServices.length,
+          source: 'verified_catalog',
+        },
+        { headers: { 'Cache-Control': PUBLIC_CACHE } }
+      )
+    }
+
+    return NextResponse.json(
+      {
+        services: data,
+        total: data.length,
+        source: 'database',
+      },
+      { headers: { 'Cache-Control': PUBLIC_CACHE } }
+    )
+  } catch {
+    const fallbackServices = searchServices(search || '', category, state, district)
+    return NextResponse.json(
+      {
         services: fallbackServices,
         total: fallbackServices.length,
         source: 'verified_catalog',
-      })
-    }
-
-    return NextResponse.json({
-      services: data,
-      total: data.length,
-      source: 'database',
-    })
-  } catch {
-    const fallbackServices = searchServices(search || '', category, state, district)
-    return NextResponse.json({
-      services: fallbackServices,
-      total: fallbackServices.length,
-      source: 'verified_catalog',
-    })
+      },
+      { headers: { 'Cache-Control': PUBLIC_CACHE } }
+    )
   }
 }

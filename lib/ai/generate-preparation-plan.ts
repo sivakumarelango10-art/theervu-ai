@@ -1,4 +1,4 @@
-import { geminiConfig } from '@/lib/ai/config'
+import { geminiConfig, TOKEN_BUDGETS } from '@/lib/ai/config'
 import { getGeminiClient, normalizeGeminiError } from '@/lib/ai/providers'
 import { BEFORE_YOU_GO_PLAN_PROMPT, buildLanguageInstruction } from '@/lib/ai/prompts'
 import {
@@ -72,6 +72,8 @@ UNCERTAINTY RULES:
         systemInstruction: `${BEFORE_YOU_GO_PLAN_PROMPT}\n\n${languageInstruction}`,
         responseMimeType: 'application/json',
         temperature: 0.2,
+        // Preparation plans need more tokens than simple chat but not the full 4096 budget
+        maxOutputTokens: TOKEN_BUDGETS.plan,
       },
     })
 

@@ -1,9 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { env } from '@/lib/config/env'
+import type { User } from '@supabase/supabase-js'
 
 export interface AdminAuthResult {
   isAdmin: boolean
-  user: any | null
+  user: User | null
   error?: string
 }
 
@@ -70,11 +71,11 @@ export async function verifyAdminUser(): Promise<AdminAuthResult> {
       user,
       error: 'Forbidden: Administrative privileges required',
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       isAdmin: false,
       user: null,
-      error: err.message || 'Internal admin authentication error',
+      error: err instanceof Error ? err.message : 'Internal admin authentication error',
     }
   }
 }

@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { env } from '@/lib/config/env'
+import { logger } from '@/lib/observability/logger'
+
+const PRIVATE_CACHE_HEADERS = {
+  'Cache-Control': 'private, no-store, max-age=0',
+}
 
 export async function GET() {
   if (!env.supabase.isConfigured) {
-    return NextResponse.json({ savedItems: [] })
+    return NextResponse.json({ savedItems: [] }, { headers: PRIVATE_CACHE_HEADERS })
   }
 
   try {
@@ -24,25 +29,35 @@ export async function GET() {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Saved items fetch error:', error.message)
+      logger.error('Saved items fetch error:', { error: error.message })
       return NextResponse.json({ error: 'Failed to fetch saved items' }, { status: 500 })
     }
 
-    return NextResponse.json({ savedItems: items || [] })
-  } catch (err: any) {
-    console.error('Saved items GET error:', err?.message || err)
+    return NextResponse.json({ savedItems: items || [] }, { headers: PRIVATE_CACHE_HEADERS })
+  } catch (err: unknown) {
+    logger.error('Saved items GET error:', { error: String(err) })
     return NextResponse.json({ error: 'Failed to fetch saved items' }, { status: 500 })
   }
 }
 
 export async function POST(request: Request) {
   if (!env.supabase.isConfigured) {
-    return NextResponse.json({ success: true, mode: 'local' })
+    return NextResponse.json({ success: true, mode: 'local' }, { headers: PRIVATE_CACHE_HEADERS })
   }
 
   try {
-    const json = await request.json()
-    const { item_type, item_reference_id, title, metadata } = json
+    let json: unknown
+    try {
+      json = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
+    if (typeof json !== 'object' || json === null) {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+    }
+
+    const { item_type, item_reference_id, title, metadata } = json as Record<string, unknown>
 
     if (!item_type || !item_reference_id || !title) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -61,22 +76,22 @@ export async function POST(request: Request) {
       .from('saved_items')
       .insert({
         user_id: user.id,
-        item_type,
-        item_reference_id,
-        title,
-        metadata: metadata || {},
+        item_type: String(item_type),
+        item_reference_id: String(item_reference_id),
+        title: String(title),
+        metadata: (typeof metadata === 'object' && metadata !== null) ? metadata : {},
       })
       .select()
       .single()
 
     if (error) {
-      console.error('Saved items insert error:', error.message)
+      logger.error('Saved items insert error:', { error: error.message })
       return NextResponse.json({ error: 'Failed to save item' }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, savedItem: data })
-  } catch (err: any) {
-    console.error('Saved items POST error:', err?.message || err)
+    return NextResponse.json({ success: true, savedItem: data }, { status: 201, headers: PRIVATE_CACHE_HEADERS })
+  } catch (err: unknown) {
+    logger.error('Saved items POST error:', { error: String(err) })
     return NextResponse.json({ error: 'Failed to save item' }, { status: 500 })
   }
 }

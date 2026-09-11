@@ -1,8 +1,9 @@
-import { geminiConfig } from '@/lib/ai/config'
+import { geminiConfig, TOKEN_BUDGETS } from '@/lib/ai/config'
 import { getGeminiClient, normalizeGeminiError } from '@/lib/ai/providers'
 import { DOCUMENT_EXPLAIN_PROMPT, buildLanguageInstruction } from '@/lib/ai/prompts'
 import { evaluateSafety } from '@/lib/ai/safety'
 import { geminiDocumentExplainSchema, type GeminiDocumentExplain } from '@/lib/ai/schemas'
+import { logger } from '@/lib/observability/logger'
 
 export interface MultimodalFileData {
   mimeType: string
@@ -52,7 +53,10 @@ export async function explainGeminiDocument(
     const languageInstruction = buildLanguageInstruction(preferredLanguage)
     const textPrompt = `Document Category: ${documentType || 'General'}\nContent / Context:\n${(extractedText || '').slice(0, 4000)}\n\nPlease provide a clear, empathetic explanation conforming strictly to the requested JSON schema. Never claim legal or medical certainty. Highlight any unknown or unverified details.`
 
-    let contents: any = textPrompt
+    type MultimodalPart =
+      | { inlineData: { mimeType: string; data: string }; text?: never }
+      | { text: string; inlineData?: never }
+    let contents: string | MultimodalPart[] = textPrompt
 
     // If multimodal file is supplied, attach it as inlineData
     if (fileData && fileData.base64 && fileData.mimeType) {
@@ -76,6 +80,7 @@ export async function explainGeminiDocument(
         systemInstruction: `${DOCUMENT_EXPLAIN_PROMPT}\n\n${languageInstruction}`,
         responseMimeType: 'application/json',
         temperature: 0.2,
+        maxOutputTokens: TOKEN_BUDGETS.documentExplain,
       },
     })
 
@@ -90,15 +95,15 @@ export async function explainGeminiDocument(
             disclaimer: safety.disclaimer,
           }
         }
-      } catch (jsonErr) {
-        console.warn('Could not parse Gemini document explanation JSON, falling back:', jsonErr)
+      } catch (jsonErr: unknown) {
+        logger.warn('Could not parse Gemini document explanation JSON, falling back:', { error: String(jsonErr) })
       }
     }
 
     return defaultFallback
-  } catch (error) {
+  } catch (error: unknown) {
     const norm = normalizeGeminiError(error)
-    console.error(`Gemini Document Explanation Error [${norm.code}]:`, norm.userMessage)
+    logger.error('Gemini Document Explanation Error', { code: norm.code, message: norm.userMessage })
     return defaultFallback
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { transcribeAudio } from '@/lib/voice/speech-to-text'
 import { getClientIp, checkRateLimit } from '@/lib/security/rate-limit'
+import { logger } from '@/lib/observability/logger'
 
 export async function POST(request: Request) {
   const ip = getClientIp(request)
@@ -37,8 +38,8 @@ export async function POST(request: Request) {
       provider: 'browser',
       message: 'Server speech model not active. Please use browser speech dictation.',
     })
-  } catch (err: any) {
-    console.error('Voice Transcribe Error:', err)
+  } catch (err: unknown) {
+    logger.error('Voice Transcribe Error:', { error: String(err) })
     return NextResponse.json(
       { error: 'Failed to process voice transcription.' },
       { status: 500 }

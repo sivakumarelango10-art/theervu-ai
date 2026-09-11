@@ -57,8 +57,8 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
         setSubmitted(false)
         setMessage('')
       }, 1500)
-    } catch (err: any) {
-      setError(err?.message || 'Error submitting feedback.')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error submitting feedback.')
     } finally {
       setLoading(false)
     }
@@ -97,6 +97,8 @@ export function FeedbackModal({ open, onOpenChange }: FeedbackModalProps) {
                     key={star}
                     type="button"
                     onClick={() => setRating(star)}
+                    aria-label={`Rate ${star} out of 5 stars`}
+                    aria-pressed={star <= rating}
                     className="p-1 text-amber-400 transition-transform hover:scale-110 focus:outline-none"
                   >
                     <Star

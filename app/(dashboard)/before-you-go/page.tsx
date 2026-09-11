@@ -30,19 +30,14 @@ function BeforeYouGoContent() {
   const [plan, setPlan] = React.useState<PreparationPlanData | null>(null)
   const [error, setError] = React.useState<string | null>(null)
 
-  // Auto-generate if query param provided
-  React.useEffect(() => {
-    if (initialTask && !plan && !loading) {
-      handleGenerate(initialTask, '')
-    }
-  }, [initialTask])
-
-  async function handleGenerate(taskText?: string, locText?: string) {
+  const handleGenerate = React.useCallback(async (taskText?: string, locText?: string) => {
     const query = taskText || task
     if (!query.trim()) return
 
     setLoading(true)
     setError(null)
+
+    const controller = new AbortController()
 
     try {
       const res = await fetch('/api/ai/prepare', {
@@ -53,20 +48,31 @@ function BeforeYouGoContent() {
           location: locText || location,
           serviceSlug: initialService || undefined,
         }),
+        signal: controller.signal,
       })
 
-      const data = await res.json()
+      const data = await res.json() as { error?: string; title?: string; sections?: unknown[] }
       if (!res.ok) {
         throw new Error(data.error || 'Failed to generate plan.')
       }
 
-      setPlan(data)
-    } catch (err: any) {
-      setError(err?.message || 'Error generating preparation plan.')
+      setPlan(data as PreparationPlanData)
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return
+      setError(err instanceof Error ? err.message : 'Error generating preparation plan.')
     } finally {
-      setLoading(false)
+      if (!controller.signal.aborted) {
+        setLoading(false)
+      }
     }
-  }
+  }, [task, location, initialService])
+
+  // Auto-generate if query param provided
+  React.useEffect(() => {
+    if (initialTask && !plan && !loading) {
+      handleGenerate(initialTask, '')
+    }
+  }, [initialTask, handleGenerate, plan, loading])
 
   return (
     <div className="min-h-screen bg-[#fbfcfe] text-slate-900">
@@ -75,7 +81,7 @@ function BeforeYouGoContent() {
         <div className="mx-auto flex h-16 max-w-[1180px] items-center justify-between px-5 lg:px-8">
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center" aria-label="TheervuAI home">
-              <img src={logoUrl} alt="TheervuAI" className="h-9 w-auto object-contain" />
+              <img src={logoUrl} alt="TheervuAI" width={144} height={36} className="h-9 w-auto object-contain" />
             </Link>
             <span className="hidden sm:inline text-xs font-semibold text-slate-400 uppercase tracking-widest">
               Before You Go Assistant

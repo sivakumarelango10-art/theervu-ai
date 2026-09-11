@@ -4,6 +4,7 @@ import { generatePreparationPlan } from '@/lib/ai/client'
 import { createClient } from '@/lib/supabase/server'
 import { env } from '@/lib/config/env'
 import { getClientIp, checkRateLimit } from '@/lib/security/rate-limit'
+import { logger } from '@/lib/observability/logger'
 
 export async function POST(request: Request) {
   const ip = getClientIp(request)
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
     )
   }
 
-  let json: any
+  let json: unknown
   try {
     json = await request.json()
   } catch {
@@ -44,83 +45,98 @@ export async function POST(request: Request) {
       district,
     } = result.data
 
-    // Generate full preparation plan via Gemini or Fallback
-    const plan = await generatePreparationPlan(task, location, preferredLanguage, {
-      appointmentStatus,
-      visitorType,
-      deadline,
-      state,
-      district,
-    })
+    // Run AI plan generation and Supabase auth resolution in parallel to reduce latency
+    const planOptions = { appointmentStatus, visitorType, deadline, state, district }
 
-    // Check if user is authenticated and wishes to persist the plan
+    type AuthResult = { supabase: Awaited<ReturnType<typeof createClient>>; userId: string } | null
+
+    const getAuthResult = async (): Promise<AuthResult> => {
+      if (!env.supabase.isConfigured) return null
+      const supabase = await createClient()
+      const { data } = await supabase.auth.getUser()
+      if (!data.user) return null
+      return { supabase, userId: data.user.id }
+    }
+
+    const [plan, authResult] = await Promise.all([
+      generatePreparationPlan(task, location, preferredLanguage, planOptions),
+      getAuthResult(),
+    ])
+
     let savedPlanId: string | null = null
 
-    if (env.supabase.isConfigured) {
+    if (authResult) {
+      const { supabase: db, userId } = authResult
       try {
-        const supabase = await createClient()
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-
-        if (user) {
-          // Resolve service_id if slug provided
-          let serviceId: string | null = null
-          if (serviceSlug) {
-            const { data: svc } = await supabase
-              .from('services')
-              .select('id')
-              .eq('slug', serviceSlug)
-              .single()
-            if (svc) serviceId = svc.id
-          }
-
-          const { data: insertedPlan } = await supabase
-            .from('preparation_plans')
-            .insert({
-              user_id: user.id,
-              service_id: serviceId,
-              title: plan.title,
-              purpose: task,
-              location: plan.location,
-              summary: plan.summary,
-              status: 'active',
-            })
+        // Resolve service_id by slug if provided
+        let serviceId: string | null = null
+        if (serviceSlug) {
+          const { data: svc } = await db
+            .from('services')
             .select('id')
+            .eq('slug', serviceSlug)
             .single()
+          if (svc) serviceId = svc.id
+        }
 
-          if (insertedPlan) {
-            savedPlanId = insertedPlan.id
+        const { data: insertedPlan } = await db
+          .from('preparation_plans')
+          .insert({
+            user_id: userId,
+            service_id: serviceId,
+            title: plan.title,
+            purpose: task,
+            location: plan.location,
+            summary: plan.summary,
+            status: 'active',
+          })
+          .select('id')
+          .single()
 
-            // Insert plan checklist items
-            const allItems = plan.sections.flatMap((sec) =>
-              sec.items.map((item) => ({
-                preparation_plan_id: insertedPlan.id,
-                item_type: 'document',
-                title: item.title,
-                description: item.description,
-                is_required: item.required,
-                is_completed: item.completed || false,
-                priority: item.priority || 1,
-              }))
-            )
+        if (insertedPlan) {
+          savedPlanId = insertedPlan.id
 
-            if (allItems.length > 0) {
-              await supabase.from('preparation_items').insert(allItems)
-            }
+          // Batch all checklist items into a single insert
+          const allItems = plan.sections.flatMap((sec) =>
+            sec.items.map((item) => ({
+              preparation_plan_id: insertedPlan.id,
+              item_type: 'document',
+              title: item.title,
+              description: item.description,
+              is_required: item.required,
+              is_completed: item.completed || false,
+              priority: item.priority || 1,
+            }))
+          )
+
+          if (allItems.length > 0) {
+            await db.from('preparation_items').insert(allItems)
           }
         }
-      } catch (dbError) {
-        console.warn('Could not persist preparation plan to DB:', dbError)
+      } catch (dbError: unknown) {
+        logger.warn('Could not persist preparation plan to DB', {
+          endpoint: '/api/ai/prepare',
+          metadata: {
+            error: dbError instanceof Error ? dbError.message : 'unknown',
+          },
+        })
       }
     }
+
+
 
     return NextResponse.json({
       ...plan,
       id: savedPlanId,
     })
-  } catch (error: any) {
-    console.error('Prepare API Error:', error)
+  } catch (error: unknown) {
+    logger.error('Prepare API Error', {
+      endpoint: '/api/ai/prepare',
+      statusCode: 500,
+      metadata: {
+        error: error instanceof Error ? error.message : 'unknown',
+      },
+    })
     return NextResponse.json(
       {
         error: 'We could not generate the preparation plan. Please try again.',

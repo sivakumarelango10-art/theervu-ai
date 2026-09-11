@@ -53,7 +53,7 @@ export async function GET(request: Request) {
       generatedAt: new Date().toISOString(),
       disclaimer: 'All entries are PII-scrubbed. No personal data is stored in audit logs.',
     })
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json({ error: 'Failed to retrieve audit log' }, { status: 500 })
   }
 }

@@ -3,6 +3,11 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { env } from '@/lib/config/env'
 import { getClientIp, checkRateLimit } from '@/lib/security/rate-limit'
+import { logger } from '@/lib/observability/logger'
+
+const PRIVATE_CACHE_HEADERS = {
+  'Cache-Control': 'private, no-store, max-age=0',
+}
 
 const updateApplicationSchema = z.object({
   status: z
@@ -55,9 +60,10 @@ export async function GET(
       return NextResponse.json({ error: 'Application tracker not found' }, { status: 404 })
     }
 
-    return NextResponse.json({ application: data })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 })
+    return NextResponse.json({ application: data }, { headers: PRIVATE_CACHE_HEADERS })
+  } catch (err: unknown) {
+    logger.error('Application GET error:', { error: String(err) })
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Server error' }, { status: 500 })
   }
 }
 
@@ -76,7 +82,7 @@ export async function PATCH(
     )
   }
 
-  let json: any
+  let json: unknown
   try {
     json = await request.json()
   } catch {
@@ -92,7 +98,7 @@ export async function PATCH(
   }
 
   if (!env.supabase.isConfigured) {
-    return NextResponse.json({ success: true, id, ...validated.data })
+    return NextResponse.json({ success: true, id, ...validated.data }, { headers: PRIVATE_CACHE_HEADERS })
   }
 
   try {
@@ -105,7 +111,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const updatePayload: Record<string, any> = {
+    const updatePayload: Record<string, string | null | undefined> = {
       ...validated.data,
       updated_at: new Date().toISOString(),
     }
@@ -123,6 +129,7 @@ export async function PATCH(
       .single()
 
     if (error) {
+      logger.error('Update application tracker error:', { error: error.message })
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
@@ -130,9 +137,10 @@ export async function PATCH(
       return NextResponse.json({ error: 'Application tracker not found' }, { status: 404 })
     }
 
-    return NextResponse.json({ application: data })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 })
+    return NextResponse.json({ application: data }, { headers: PRIVATE_CACHE_HEADERS })
+  } catch (err: unknown) {
+    logger.error('Application PATCH error:', { error: String(err) })
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Server error' }, { status: 500 })
   }
 }
 
@@ -152,7 +160,7 @@ export async function DELETE(
   }
 
   if (!env.supabase.isConfigured) {
-    return NextResponse.json({ success: true, id })
+    return NextResponse.json({ success: true, id }, { headers: PRIVATE_CACHE_HEADERS })
   }
 
   try {
@@ -172,11 +180,13 @@ export async function DELETE(
       .eq('user_id', user.id)
 
     if (error) {
+      logger.error('Delete application tracker error:', { error: error.message })
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, id })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 })
+    return NextResponse.json({ success: true, id }, { headers: PRIVATE_CACHE_HEADERS })
+  } catch (err: unknown) {
+    logger.error('Application DELETE error:', { error: String(err) })
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Server error' }, { status: 500 })
   }
 }

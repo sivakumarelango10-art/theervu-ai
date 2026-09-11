@@ -4,6 +4,7 @@ import { generateChatResponse } from '@/lib/ai/client'
 import { createClient } from '@/lib/supabase/server'
 import { env } from '@/lib/config/env'
 import { getClientIp, checkRateLimit } from '@/lib/security/rate-limit'
+import { logger } from '@/lib/observability/logger'
 
 export async function POST(request: Request) {
   const ip = getClientIp(request)
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
     )
   }
 
-  let json: any
+  let json: unknown
   try {
     json = await request.json()
   } catch {
@@ -70,28 +71,33 @@ export async function POST(request: Request) {
           }
 
           if (activeConversationId) {
-            // Save user message
-            await supabase.from('messages').insert({
-              conversation_id: activeConversationId,
-              role: 'user',
-              content: question,
-            })
-
-            // Save assistant message
-            await supabase.from('messages').insert({
-              conversation_id: activeConversationId,
-              role: 'assistant',
-              content: aiResponse.answer,
-              metadata: {
-                summary: aiResponse.summary,
-                sources: aiResponse.sources,
-                disclaimer: aiResponse.disclaimer,
+            // Batch both messages into a single DB round-trip
+            await supabase.from('messages').insert([
+              {
+                conversation_id: activeConversationId,
+                role: 'user',
+                content: question,
               },
-            })
+              {
+                conversation_id: activeConversationId,
+                role: 'assistant',
+                content: aiResponse.answer,
+                metadata: {
+                  summary: aiResponse.summary,
+                  sources: aiResponse.sources,
+                  disclaimer: aiResponse.disclaimer,
+                },
+              },
+            ])
           }
         }
-      } catch (dbError) {
-        console.warn('Could not persist conversation to database:', dbError)
+      } catch (dbError: unknown) {
+        logger.warn('Could not persist conversation to database', {
+          endpoint: '/api/ai/chat',
+          metadata: {
+            error: dbError instanceof Error ? dbError.message : 'unknown',
+          },
+        })
       }
     }
 
@@ -99,8 +105,14 @@ export async function POST(request: Request) {
       ...aiResponse,
       conversationId: activeConversationId,
     })
-  } catch (error: any) {
-    console.error('Chat API Error:', error)
+  } catch (error: unknown) {
+    logger.error('Chat API Error', {
+      endpoint: '/api/ai/chat',
+      statusCode: 500,
+      metadata: {
+        error: error instanceof Error ? error.message : 'unknown',
+      },
+    })
     return NextResponse.json(
       {
         error: 'We could not process that request. Please try again.',

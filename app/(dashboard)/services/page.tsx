@@ -45,7 +45,9 @@ export default function ServicesPage() {
   const [loading, setLoading] = React.useState(false)
 
   React.useEffect(() => {
-    async function loadServices() {
+    const controller = new AbortController()
+
+    const timer = setTimeout(async () => {
       setLoading(true)
       try {
         const params = new URLSearchParams()
@@ -54,21 +56,31 @@ export default function ServicesPage() {
         if (selectedState && selectedState !== 'All India') params.set('state', selectedState)
         if (selectedDistrict.trim()) params.set('district', selectedDistrict.trim())
 
-        const res = await fetch(`/api/services?${params.toString()}`)
-        const data = await res.json()
+        const res = await fetch(`/api/services?${params.toString()}`, {
+          signal: controller.signal,
+        })
+        const data = await res.json() as { services?: CivicService[] }
         if (data.services) {
           setServices(data.services)
         }
-      } catch (err) {
-        console.warn('Could not fetch services, using seed data:', err)
+      } catch (err: unknown) {
+        // Ignore abort errors from filter changes; log others
+        if (err instanceof Error && err.name !== 'AbortError') {
+          console.warn('Could not fetch services, using seed data:', err.message)
+        }
       } finally {
-        setLoading(false)
+        if (!controller.signal.aborted) {
+          setLoading(false)
+        }
       }
-    }
+    }, 250)
 
-    const timer = setTimeout(loadServices, 250)
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
   }, [selectedCategory, searchQuery, selectedState, selectedDistrict])
+
 
   return (
     <div className="min-h-screen bg-[#fbfcfe] text-slate-900">
@@ -77,7 +89,7 @@ export default function ServicesPage() {
         <div className="mx-auto flex h-16 max-w-[1180px] items-center justify-between px-5 lg:px-8">
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center" aria-label="TheervuAI home">
-              <img src={logoUrl} alt="TheervuAI" className="h-9 w-auto object-contain" />
+              <img src={logoUrl} alt="TheervuAI" width={144} height={36} className="h-9 w-auto object-contain" />
             </Link>
             <span className="hidden sm:inline text-xs font-semibold text-slate-400 uppercase tracking-widest">
               Civic Services Directory

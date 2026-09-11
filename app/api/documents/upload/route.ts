@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { env } from '@/lib/config/env'
 import { getClientIp, checkRateLimit } from '@/lib/security/rate-limit'
+import { logger } from '@/lib/observability/logger'
 
 const ALLOWED_MIME_TYPES = [
   'application/pdf',
@@ -119,7 +120,7 @@ export async function POST(request: Request) {
       .single()
 
     if (dbError) {
-      console.error('Document Metadata DB Insert Error:', dbError.message)
+      logger.error('Document Metadata DB Insert Error:', { error: dbError.message })
       return NextResponse.json(
         { error: 'Failed to record document metadata. Please try again.' },
         { status: 500 }
@@ -134,8 +135,8 @@ export async function POST(request: Request) {
       status: 'completed',
       extractedText: docRecord.extracted_text,
     })
-  } catch (error: any) {
-    console.error('File Upload Error:', error)
+  } catch (error: unknown) {
+    logger.error('File Upload Error:', { error: String(error) })
     return NextResponse.json(
       { error: 'An unexpected error occurred during document upload.' },
       { status: 500 }

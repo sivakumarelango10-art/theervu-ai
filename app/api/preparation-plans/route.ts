@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { env } from '@/lib/config/env'
+import { logger } from '@/lib/observability/logger'
+
+const PRIVATE_CACHE_HEADERS = {
+  'Cache-Control': 'private, no-store, max-age=0',
+}
 
 export async function GET() {
   if (!env.supabase.isConfigured) {
-    return NextResponse.json({ plans: [] })
+    return NextResponse.json({ plans: [] }, { headers: PRIVATE_CACHE_HEADERS })
   }
 
   try {
@@ -41,13 +46,13 @@ export async function GET() {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Preparation plans fetch error:', error.message)
+      logger.error('Preparation plans fetch error:', { error: error.message })
       return NextResponse.json({ error: 'Failed to retrieve preparation plans' }, { status: 500 })
     }
 
-    return NextResponse.json({ plans: plans || [] })
-  } catch (err: any) {
-    console.error('Preparation plans GET exception:', err?.message || err)
+    return NextResponse.json({ plans: plans || [] }, { headers: PRIVATE_CACHE_HEADERS })
+  } catch (err: unknown) {
+    logger.error('Preparation plans GET exception:', { error: String(err) })
     return NextResponse.json({ error: 'Failed to retrieve preparation plans' }, { status: 500 })
   }
 }

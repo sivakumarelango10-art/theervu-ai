@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { translateText } from '@/lib/i18n/translation'
 import { getClientIp, checkRateLimit } from '@/lib/security/rate-limit'
+import { logger } from '@/lib/observability/logger'
 
 const translateSchema = z.object({
   text: z.string().min(1).max(10000),
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
     )
   }
 
-  let json: any
+  let json: unknown
   try {
     json = await request.json()
   } catch {
@@ -43,8 +44,8 @@ export async function POST(request: Request) {
     })
 
     return NextResponse.json(translation)
-  } catch (error: any) {
-    console.error('Translation API Error:', error)
+  } catch (error: unknown) {
+    logger.error('Translation API Error:', { error: String(error) })
     return NextResponse.json(
       { error: 'Failed to translate content. Please try again.' },
       { status: 500 }

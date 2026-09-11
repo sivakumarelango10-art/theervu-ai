@@ -3,6 +3,11 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { env } from '@/lib/config/env'
 import { getClientIp, checkRateLimit } from '@/lib/security/rate-limit'
+import { logger } from '@/lib/observability/logger'
+
+const PRIVATE_CACHE_HEADERS = {
+  'Cache-Control': 'private, no-store, max-age=0',
+}
 
 const createReminderSchema = z.object({
   title: z.string().min(1).max(200),
@@ -13,7 +18,7 @@ const createReminderSchema = z.object({
   scheduled_for: z.string().refine((val) => !isNaN(Date.parse(val)), {
     message: 'Invalid scheduled date/time format',
   }),
-  metadata: z.record(z.string(), z.any()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
 export async function GET(request: Request) {
@@ -27,7 +32,7 @@ export async function GET(request: Request) {
   }
 
   if (!env.supabase.isConfigured) {
-    return NextResponse.json({ reminders: [] })
+    return NextResponse.json({ reminders: [] }, { headers: PRIVATE_CACHE_HEADERS })
   }
 
   try {
@@ -47,13 +52,13 @@ export async function GET(request: Request) {
       .order('scheduled_for', { ascending: true })
 
     if (error) {
-      console.error('Fetch Reminders Error:', error.message)
+      logger.error('Fetch Reminders Error:', { error: error.message })
       return NextResponse.json({ error: 'Failed to fetch reminders' }, { status: 500 })
     }
 
-    return NextResponse.json({ reminders: reminders || [] })
-  } catch (err: any) {
-    console.error('Reminders API Error:', err)
+    return NextResponse.json({ reminders: reminders || [] }, { headers: PRIVATE_CACHE_HEADERS })
+  } catch (err: unknown) {
+    logger.error('Reminders API Error:', { error: String(err) })
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }
@@ -68,7 +73,7 @@ export async function POST(request: Request) {
     )
   }
 
-  let json: any
+  let json: unknown
   try {
     json = await request.json()
   } catch {
@@ -95,7 +100,7 @@ export async function POST(request: Request) {
         scheduled_for,
         status: 'pending',
         created_at: new Date().toISOString(),
-      })
+      }, { status: 201, headers: PRIVATE_CACHE_HEADERS })
     }
 
     const supabase = await createClient()
@@ -125,13 +130,13 @@ export async function POST(request: Request) {
       .single()
 
     if (error) {
-      console.error('Insert Reminder Error:', error.message)
+      logger.error('Insert Reminder Error:', { error: error.message })
       return NextResponse.json({ error: 'Failed to create reminder' }, { status: 500 })
     }
 
-    return NextResponse.json(reminder, { status: 201 })
-  } catch (err: any) {
-    console.error('Create Reminder API Error:', err)
+    return NextResponse.json(reminder, { status: 201, headers: PRIVATE_CACHE_HEADERS })
+  } catch (err: unknown) {
+    logger.error('Create Reminder API Error:', { error: String(err) })
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }

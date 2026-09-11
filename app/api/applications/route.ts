@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { env } from '@/lib/config/env'
+import { logger } from '@/lib/observability/logger'
+
+const PRIVATE_CACHE_HEADERS = {
+  'Cache-Control': 'private, no-store, max-age=0',
+}
 
 const applicationSchema = z.object({
   service_id: z.string().uuid().optional().nullable(),
@@ -30,7 +35,7 @@ export async function GET() {
     return NextResponse.json({
       applications: [],
       notice: 'Supabase is not configured. Tracker persistence requires database setup.',
-    })
+    }, { headers: PRIVATE_CACHE_HEADERS })
   }
 
   try {
@@ -51,12 +56,14 @@ export async function GET() {
       .order('created_at', { ascending: false })
 
     if (error) {
+      logger.error('Fetch applications error:', { error: error.message })
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ applications: data || [] })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 })
+    return NextResponse.json({ applications: data || [] }, { headers: PRIVATE_CACHE_HEADERS })
+  } catch (err: unknown) {
+    logger.error('Applications GET error:', { error: String(err) })
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Internal Server Error' }, { status: 500 })
   }
 }
 
@@ -79,8 +86,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const validated = applicationSchema.safeParse(body)
+    let json: unknown
+    try {
+      json = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
+    const validated = applicationSchema.safeParse(json)
 
     if (!validated.success) {
       return NextResponse.json(
@@ -103,14 +116,16 @@ export async function POST(request: Request) {
       .single()
 
     if (error) {
+      logger.error('Create application error:', { error: error.message })
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     return NextResponse.json(
       { application: data, message: 'Application tracker created successfully' },
-      { status: 201 }
+      { status: 201, headers: PRIVATE_CACHE_HEADERS }
     )
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 })
+  } catch (err: unknown) {
+    logger.error('Applications POST error:', { error: String(err) })
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Internal Server Error' }, { status: 500 })
   }
 }

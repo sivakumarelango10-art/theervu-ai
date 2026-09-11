@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     )
   }
 
-  let json: any
+  let json: unknown
   try {
     json = await request.json()
   } catch {
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       success: true,
       message: 'Thank you for your feedback! It helps improve TheervuAI for everyone.',
     })
-  } catch (error: any) {
+  } catch {
     return NextResponse.json(
       { error: 'Failed to submit feedback. Please try again.' },
       { status: 500 }

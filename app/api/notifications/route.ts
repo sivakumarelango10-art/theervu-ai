@@ -3,6 +3,11 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { env } from '@/lib/config/env'
 import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit'
+import { logger } from '@/lib/observability/logger'
+
+const PRIVATE_CACHE_HEADERS = {
+  'Cache-Control': 'private, no-store, max-age=0',
+}
 
 // GET: List current user's notifications (unread first, then by date)
 export async function GET(request: Request) {
@@ -11,7 +16,7 @@ export async function GET(request: Request) {
       notifications: [],
       unreadCount: 0,
       notice: 'Notifications require database configuration.',
-    })
+    }, { headers: PRIVATE_CACHE_HEADERS })
   }
 
   const ip = getClientIp(request)
@@ -57,8 +62,9 @@ export async function GET(request: Request) {
     return NextResponse.json({
       notifications: data || [],
       unreadCount,
-    })
-  } catch (err: any) {
+    }, { headers: PRIVATE_CACHE_HEADERS })
+  } catch (err: unknown) {
+    logger.error('Notifications GET error:', { error: String(err) })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -82,7 +88,13 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await request.json()
+    let body: unknown
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
     const parsed = markReadSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
@@ -99,10 +111,11 @@ export async function PATCH(request: Request) {
         .eq('is_read', false)
 
       if (error) {
+        logger.error('Mark all notifications error:', { error: error.message })
         return NextResponse.json({ error: 'Failed to mark all as read' }, { status: 500 })
       }
 
-      return NextResponse.json({ message: 'All notifications marked as read' })
+      return NextResponse.json({ message: 'All notifications marked as read' }, { headers: PRIVATE_CACHE_HEADERS })
     }
 
     if (notificationId) {
@@ -119,11 +132,12 @@ export async function PATCH(request: Request) {
         return NextResponse.json({ error: 'Notification not found or access denied' }, { status: 404 })
       }
 
-      return NextResponse.json({ notification: data })
+      return NextResponse.json({ notification: data }, { headers: PRIVATE_CACHE_HEADERS })
     }
 
     return NextResponse.json({ error: 'Provide notificationId or markAll: true' }, { status: 400 })
-  } catch (err: any) {
+  } catch (err: unknown) {
+    logger.error('Notifications PATCH error:', { error: String(err) })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

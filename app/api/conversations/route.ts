@@ -2,10 +2,15 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { env } from '@/lib/config/env'
 import { getClientIp, checkRateLimit } from '@/lib/security/rate-limit'
+import { logger } from '@/lib/observability/logger'
+
+const PRIVATE_CACHE_HEADERS = {
+  'Cache-Control': 'private, no-store, max-age=0',
+}
 
 export async function GET(request: Request) {
   if (!env.supabase.isConfigured) {
-    return NextResponse.json({ conversations: [] })
+    return NextResponse.json({ conversations: [] }, { headers: PRIVATE_CACHE_HEADERS })
   }
 
   try {
@@ -29,13 +34,13 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Fetch conversations DB error:', error)
+      logger.error('Fetch conversations DB error:', { error: error.message })
       return NextResponse.json({ error: 'Failed to fetch conversations' }, { status: 500 })
     }
 
-    return NextResponse.json({ conversations: conversations || [] })
-  } catch (error) {
-    console.error('Conversations GET error:', error)
+    return NextResponse.json({ conversations: conversations || [] }, { headers: PRIVATE_CACHE_HEADERS })
+  } catch (error: unknown) {
+    logger.error('Conversations GET error:', { error: String(error) })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -83,13 +88,13 @@ export async function POST(request: Request) {
       .single()
 
     if (error) {
-      console.error('Create conversation DB error:', error)
+      logger.error('Create conversation DB error:', { error: error.message })
       return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 })
     }
 
-    return NextResponse.json({ conversation }, { status: 201 })
-  } catch (error) {
-    console.error('Conversations POST error:', error)
+    return NextResponse.json({ conversation }, { status: 201, headers: PRIVATE_CACHE_HEADERS })
+  } catch (error: unknown) {
+    logger.error('Conversations POST error:', { error: String(error) })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -21,8 +21,10 @@ export interface LogEntry {
   endpoint?: string
   durationMs?: number
   statusCode?: number
+  error?: unknown
   metadata?: Record<string, unknown>
   timestamp: string
+  [key: string]: unknown
 }
 
 // ─── Correlation ID Management ────────────────────────────────────────────────
@@ -69,14 +71,22 @@ function createLogEntry(
   message: string,
   context?: Omit<LogEntry, 'level' | 'message' | 'timestamp'>,
 ): LogEntry {
+  const { correlationId, endpoint, durationMs, statusCode, error, metadata, ...rest } = context || {}
+  const mergedMetadata: Record<string, unknown> = {
+    ...(metadata || {}),
+    ...rest,
+    ...(error !== undefined ? { error: error instanceof Error ? error.message : String(error) } : {}),
+  }
+
   return {
     level,
     message: scrubPII(message),
-    correlationId: context?.correlationId,
-    endpoint: context?.endpoint,
-    durationMs: context?.durationMs,
-    statusCode: context?.statusCode,
-    metadata: sanitizeMetadata(context?.metadata),
+    correlationId: typeof correlationId === 'string' ? correlationId : undefined,
+    endpoint: typeof endpoint === 'string' ? endpoint : undefined,
+    durationMs: typeof durationMs === 'number' ? durationMs : undefined,
+    statusCode: typeof statusCode === 'number' ? statusCode : undefined,
+    error,
+    metadata: Object.keys(mergedMetadata).length > 0 ? sanitizeMetadata(mergedMetadata) : undefined,
     timestamp: new Date().toISOString(),
   }
 }

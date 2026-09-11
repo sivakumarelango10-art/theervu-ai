@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { documentExplainSchema } from '@/lib/validation/schemas'
 import { explainDocument } from '@/lib/ai/client'
 import { getClientIp, checkRateLimit } from '@/lib/security/rate-limit'
+import { logger } from '@/lib/observability/logger'
 
 export async function POST(request: Request) {
   const ip = getClientIp(request)
@@ -13,7 +14,7 @@ export async function POST(request: Request) {
     )
   }
 
-  let json: any
+  let json: unknown
   try {
     json = await request.json()
   } catch {
@@ -39,8 +40,12 @@ export async function POST(request: Request) {
     )
 
     return NextResponse.json(explanation)
-  } catch (error: any) {
-    console.error('Explain Document API Error:', error)
+  } catch (error: unknown) {
+    logger.error('Explain Document API Error', {
+      endpoint: '/api/ai/explain-document',
+      statusCode: 500,
+      metadata: { error: error instanceof Error ? error.message : 'unknown' },
+    })
     return NextResponse.json(
       { error: 'Failed to generate document explanation. Please try again.' },
       { status: 500 }
