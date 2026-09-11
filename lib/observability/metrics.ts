@@ -17,9 +17,19 @@ export interface MetricEvent {
     | 'gemini_call'
     | 'fallback_invoked'
     | 'api_error'
+    // Phase 7 additions
+    | 'auth_failure'
+    | 'rate_limit_hit'
+    | 'upload_failure'
+    | 'intent_classified'
+    | 'action_requested'
+    | 'notification_sent'
+    | 'source_verified'
+    | 'admin_action'
   status: 'success' | 'failure' | 'warning'
   durationMs?: number
   endpoint?: string
+  correlationId?: string
   metadata?: Record<string, string | number | boolean | null>
   timestamp: string
 }
