@@ -1,4 +1,4 @@
-import { env } from '@/lib/config/env'
+import { geminiConfig } from '@/lib/ai/config'
 import { getGeminiClient, normalizeGeminiError } from '@/lib/ai/providers'
 import { BEFORE_YOU_GO_PLAN_PROMPT, buildLanguageInstruction } from '@/lib/ai/prompts'
 import {
@@ -6,8 +6,16 @@ import {
   type FallbackPreparationPlan,
 } from '@/lib/ai/fallback'
 import { evaluateSafety } from '@/lib/ai/safety'
-import { geminiPreparationPlanSchema } from '@/lib/ai/schemas'
+import {
+  geminiPreparationPlanSchema,
+  structuredBeforeYouGoSchema,
+  convertStructuredPlanToSections,
+} from '@/lib/ai/schemas'
 
+/**
+ * Generates a structured Before You Go preparation plan using Google Gemini.
+ * Employs Section 6 validation with fallback to high-fidelity local procedures.
+ */
 export async function generateGeminiPreparationPlan(
   task: string,
   location?: string,
@@ -23,10 +31,10 @@ export async function generateGeminiPreparationPlan(
 
   try {
     const languageInstruction = buildLanguageInstruction(preferredLanguage)
-    const prompt = `Task: ${task}\nLocation: ${location || 'All India'}\nLanguage: ${preferredLanguage}\n\nPlease generate a comprehensive Preparation Plan conforming strictly to the requested JSON schema.`
+    const prompt = `Task: ${task}\nLocation: ${location || 'All India'}\nLanguage: ${preferredLanguage}\n\nPlease generate a comprehensive Preparation Plan conforming strictly to the requested JSON schema. If any fee, timing, or document is unknown, mark it as 'Not specified' or 'verify with official office'.`
 
     const response = await gemini.models.generateContent({
-      model: env.ai.geminiModel,
+      model: geminiConfig.model,
       contents: prompt,
       config: {
         systemInstruction: `${BEFORE_YOU_GO_PLAN_PROMPT}\n\n${languageInstruction}`,
@@ -39,9 +47,32 @@ export async function generateGeminiPreparationPlan(
     if (raw) {
       try {
         const parsedJson = JSON.parse(raw)
-        const validated = geminiPreparationPlanSchema.safeParse(parsedJson)
-        if (validated.success) {
-          return validated.data
+
+        // 1. Check if model returned standard sections schema
+        const sectionValidated = geminiPreparationPlanSchema.safeParse(parsedJson)
+        if (sectionValidated.success) {
+          return sectionValidated.data
+        }
+
+        // 2. Check if model returned Section 6 structured format
+        const structuredValidated = structuredBeforeYouGoSchema.safeParse(parsedJson)
+        if (structuredValidated.success) {
+          const plan = structuredValidated.data
+          return {
+            title: plan.title,
+            summary: plan.summary,
+            location: location || 'All India',
+            service: 'Civic Preparation',
+            sections: convertStructuredPlanToSections(plan),
+            warnings: plan.warnings,
+            sources: [
+              {
+                title: 'National Government Services Portal',
+                url: 'https://services.india.gov.in/',
+                authority: 'Government of India',
+              },
+            ],
+          }
         }
       } catch (jsonErr) {
         console.warn('Could not parse Gemini plan JSON output, falling back:', jsonErr)

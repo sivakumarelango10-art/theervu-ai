@@ -70,8 +70,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Sign in required to upload documents' }, { status: 401 })
     }
 
-    const fileExt = file.name.split('.').pop()
-    const uniqueFileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+    const extension = file.name.split('.').pop()?.toLowerCase() || ''
+    const validExtensions = ['pdf', 'png', 'jpg', 'jpeg', 'webp']
+    if (!validExtensions.includes(extension)) {
+      return NextResponse.json(
+        { error: 'Invalid file extension. Please upload a PDF or an image.' },
+        { status: 400 }
+      )
+    }
+
+    const uniqueFileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${extension}`
     const storagePath = `users/${user.id}/${uniqueFileName}`
 
     // Upload to Supabase Storage bucket 'documents'
@@ -86,7 +94,11 @@ export async function POST(request: Request) {
       })
 
     if (uploadError) {
-      return NextResponse.json({ error: uploadError.message }, { status: 500 })
+      console.error('Supabase Storage Upload Error:', uploadError.message)
+      return NextResponse.json(
+        { error: 'Failed to upload document to secure storage. Please try again.' },
+        { status: 502 }
+      )
     }
 
     const extractedSummary = `Text extracted from ${file.name}. Verification required.`
@@ -107,7 +119,11 @@ export async function POST(request: Request) {
       .single()
 
     if (dbError) {
-      return NextResponse.json({ error: dbError.message }, { status: 500 })
+      console.error('Document Metadata DB Insert Error:', dbError.message)
+      return NextResponse.json(
+        { error: 'Failed to record document metadata. Please try again.' },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({

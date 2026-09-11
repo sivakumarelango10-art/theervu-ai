@@ -1,6 +1,6 @@
 # TheervuAI — Clarity For What Comes Next
 
-TheervuAI is an AI-powered assistance platform that helps users understand complex real-world tasks, prepare with confidence for visits to government offices, banks, hospitals, RTOs, service centers, and other institutions, and take the correct next step.
+TheervuAI is an AI-powered civic assistance platform designed to help users prepare with confidence for visits to government offices, banks, hospitals, RTOs, service centers, and other public-facing institutions.
 
 ---
 
@@ -13,12 +13,13 @@ TheervuAI is an AI-powered assistance platform that helps users understand compl
 | **Styling** | Tailwind CSS v4 | Clean, responsive design preserving approved visual design |
 | **Animations** | Framer Motion | Smooth transitions and state animations |
 | **Icons** | Lucide React | Clean, consistent icon system |
-| **AI Engine** | Google Gemini API (`@google/genai`) | Intelligent reasoning, preparation plan generation, document explanation |
-| **Authentication** | Supabase Auth (Exclusive Google OAuth) | One-click Google Sign-In with session refresh |
-| **Database** | PostgreSQL via Supabase | Normalized schema with Row-Level Security (RLS) |
-| **ORM / Pooler** | Prisma ORM & Supabase Pooler | Connection pooling and type-safe database queries |
-| **Validation** | Zod | Runtime request, response, and schema validation |
-| **Test Runner** | Vitest | Fast unit, security, and integration test execution |
+| **AI Engine** | Google Gemini API (`@google/genai`) | Model: `gemini-3.8-flash` with structured outputs and multimodal analysis |
+| **Authentication** | Supabase Auth (Exclusive Google OAuth) | One-click Google Sign-In with server session refresh |
+| **Database** | PostgreSQL via Supabase | Normalized schema with Row-Level Security (RLS) on all 10 tables |
+| **Storage** | Supabase Storage (`documents` bucket) | Private user-isolated document storage with MIME-type validation |
+| **Security** | In-Memory Sliding-Window Rate Limiter | Abuse prevention on all AI and upload endpoints |
+| **Validation** | Zod | Runtime request, response, and Section 6 structured schema validation |
+| **Test Runner** | Vitest | Fast unit, security, and integration test execution (29 passing tests) |
 
 ---
 
@@ -53,6 +54,9 @@ pnpm exec tsc --noEmit
 # Unit & integration tests
 pnpm test
 
+# Linting
+pnpm lint
+
 # Production build
 pnpm build
 ```
@@ -61,20 +65,23 @@ pnpm build
 
 ## Core Capabilities
 
-1. **Starting Point AI Assistant**: Everyday language converted into practical next steps, required counter actions, and official verification links.
-2. **Before You Go & Dynamic Checklist**: Personalized visit preparation plans with checklist item toggling, progress tracking, print/export, and persistence.
+1. **Universal AI Assistant**: Plain-language civic advice, required counter actions, and official verification links.
+2. **Before You Go & Dynamic Checklist**: Section 6 structured preparation plans (`steps`, `documents`, `fees`, `timing`, `warnings`, `sourceNotes`) with interactive toggling and persistence.
 3. **Verified Civic Services Directory**: Searchable directory of public procedures across RTO, Passports, Civil Supplies, Healthcare, and Identity.
-4. **Document Explanation**: Secure upload and plain-language explanation of notices, forms, and medical discharge summaries with safety disclaimers.
+4. **Multimodal Document Explanation**: Secure upload and plain-language explanation of notices, forms, and medical discharge summaries with safety disclaimers.
 5. **Saved Plans & Profile Settings**: Bookmark preparation plans and set preferred regional AI languages across 9 Indian languages.
 6. **Built-in Safety Layer**: Prompt injection protection, healthcare disclaimer enforcement, and emergency escalation to 112 / 108.
 7. **Development Fallback Mode**: Operates seamlessly with verified procedures even before external API keys are configured.
 
 ---
 
-## Documentation
+## Complete Project Documentation
 
-- [Google Gemini Setup Guide](GEMINI_SETUP.md)
-- [Supabase Setup & Database Guide](SUPABASE_SETUP.md)
-- [API Documentation](API_DOCUMENTATION.md)
-- [Database Health Audit](DATABASE_HEALTH.md)
-- [Phase 2 Verification Report](PHASE_2_VERIFICATION.md)
+1. [Google Gemini Setup Guide](GEMINI_SETUP.md) — Model verification (`gemini-3.8-flash`), configuration, and SDK usage.
+2. [Supabase Setup & Database Guide](SUPABASE_SETUP.md) — PostgreSQL connection, pooler, Google OAuth, and RLS policies.
+3. [API Documentation](API_DOCUMENTATION.md) — Detailed reference for all 16 REST endpoints with Zod schemas.
+4. [Database Health Audit](DATABASE_HEALTH.md) — Schema verification, foreign keys, triggers, and query consistency.
+5. [Security & Authorization Audit](SECURITY_AUDIT.md) — Defense-in-depth, token security, rate limiting, and IDOR protection.
+6. [Deployment Guide](DEPLOYMENT_GUIDE.md) — Step-by-step production deployment to Vercel with Supabase and Gemini.
+7. [Troubleshooting Guide](TROUBLESHOOTING.md) — Common diagnostic patterns, OAuth setup, and error recovery.
+8. [Phase 3 Verification Report](PHASE_3_VERIFICATION.md) — Complete audit results, test logs, and production readiness certification.

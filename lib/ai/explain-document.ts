@@ -1,18 +1,28 @@
-import { env } from '@/lib/config/env'
+import { geminiConfig } from '@/lib/ai/config'
 import { getGeminiClient, normalizeGeminiError } from '@/lib/ai/providers'
 import { DOCUMENT_EXPLAIN_PROMPT, buildLanguageInstruction } from '@/lib/ai/prompts'
 import { evaluateSafety } from '@/lib/ai/safety'
-import { geminiDocumentExplainSchema } from '@/lib/ai/schemas'
+import { geminiDocumentExplainSchema, type GeminiDocumentExplain } from '@/lib/ai/schemas'
 
+export interface MultimodalFileData {
+  mimeType: string
+  base64: string
+}
+
+/**
+ * Explains civic or institutional documents using Google Gemini.
+ * Supports plain extracted text and direct multimodal image/PDF attachments.
+ */
 export async function explainGeminiDocument(
   extractedText: string,
   documentType?: string,
-  preferredLanguage: string = 'en'
-) {
-  const safety = evaluateSafety(extractedText)
+  preferredLanguage: string = 'en',
+  fileData?: MultimodalFileData
+): Promise<GeminiDocumentExplain> {
+  const safety = evaluateSafety(extractedText || 'Document analysis')
   const gemini = getGeminiClient()
 
-  const defaultFallback = {
+  const defaultFallback: GeminiDocumentExplain = {
     documentType: documentType || 'Official Document',
     plainLanguageSummary:
       'This document contains institutional details or instructions. Review the key requirements below, verify any deadlines, and bring supporting identification when visiting.',
@@ -40,11 +50,28 @@ export async function explainGeminiDocument(
 
   try {
     const languageInstruction = buildLanguageInstruction(preferredLanguage)
-    const prompt = `Document Category: ${documentType || 'General'}\nContent:\n${extractedText.slice(0, 4000)}\n\nPlease provide a clear explanation conforming strictly to the requested JSON schema.`
+    const textPrompt = `Document Category: ${documentType || 'General'}\nContent / Context:\n${(extractedText || '').slice(0, 4000)}\n\nPlease provide a clear, empathetic explanation conforming strictly to the requested JSON schema. Never claim legal or medical certainty. Highlight any unknown or unverified details.`
+
+    let contents: any = textPrompt
+
+    // If multimodal file is supplied, attach it as inlineData
+    if (fileData && fileData.base64 && fileData.mimeType) {
+      contents = [
+        {
+          inlineData: {
+            mimeType: fileData.mimeType,
+            data: fileData.base64,
+          },
+        },
+        {
+          text: textPrompt,
+        },
+      ]
+    }
 
     const response = await gemini.models.generateContent({
-      model: env.ai.geminiModel,
-      contents: prompt,
+      model: geminiConfig.model,
+      contents,
       config: {
         systemInstruction: `${DOCUMENT_EXPLAIN_PROMPT}\n\n${languageInstruction}`,
         responseMimeType: 'application/json',

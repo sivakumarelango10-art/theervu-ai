@@ -19,7 +19,7 @@ export const env = {
   },
   ai: {
     geminiApiKey: process.env.GEMINI_API_KEY || '',
-    geminiModel: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+    geminiModel: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
     isGeminiConfigured: Boolean(
       process.env.GEMINI_API_KEY &&
       !process.env.GEMINI_API_KEY.includes('placeholder') &&
