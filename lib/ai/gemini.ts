@@ -8,6 +8,7 @@ import {
 } from '@/lib/ai/prompts'
 import { generateGeminiPreparationPlan } from '@/lib/ai/generate-preparation-plan'
 import { explainGeminiDocument } from '@/lib/ai/explain-document'
+import { getHybridRetrievalContext } from '@/lib/ai/hybrid'
 import type {
   ChatResponse,
   ChatMessage,
@@ -122,7 +123,11 @@ export async function generateChatResponse(
   // 4. Live generation with retry & timeout
   try {
     const languageInstruction = buildLanguageInstruction(preferredLanguage)
-    const systemInstruction = `${UNIVERSAL_ASSISTANT_SYSTEM_PROMPT}\n\n${languageInstruction}`
+    const hybrid = getHybridRetrievalContext(safety.sanitizedInput)
+    let systemInstruction = `${UNIVERSAL_ASSISTANT_SYSTEM_PROMPT}\n\n${languageInstruction}`
+    if (hybrid.hybridSystemContext) {
+      systemInstruction += `\n\n${hybrid.hybridSystemContext}`
+    }
 
     let contents: any
     if (history.length === 0) {
@@ -154,17 +159,34 @@ export async function generateChatResponse(
 
     const content = response.text || ''
 
+    const sources = hybrid.matchedService
+      ? [
+          {
+            title: hybrid.matchedService.sourceName,
+            url: hybrid.matchedService.officialSourceUrl,
+            authority: hybrid.matchedService.authority,
+          },
+          {
+            title: 'National Government Services Portal',
+            url: 'https://services.india.gov.in/',
+            authority: 'Government of India',
+          },
+        ]
+      : [
+          {
+            title: 'National Government Services Portal',
+            url: 'https://services.india.gov.in/',
+            authority: 'Government of India',
+          },
+        ]
+
     return {
       answer: content,
-      summary: 'Guidance tailored to your situation.',
+      summary: hybrid.matchedService
+        ? `Official guidance for ${hybrid.matchedService.name}.`
+        : 'Guidance tailored to your situation.',
       steps: [],
-      sources: [
-        {
-          title: 'National Government Services Portal',
-          url: 'https://services.india.gov.in/',
-          authority: 'Government of India',
-        },
-      ],
+      sources,
       disclaimer: safety.disclaimer,
       isEmergency: false,
     }

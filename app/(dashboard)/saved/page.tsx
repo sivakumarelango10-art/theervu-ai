@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { UserNav } from '@/components/auth/UserNav'
 import { AddReminderModal } from '@/components/reminders/AddReminderModal'
+import { AddApplicationModal } from '@/components/applications/AddApplicationModal'
 import {
   ArrowLeft,
   ArrowRight,
@@ -15,26 +16,32 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
+  ExternalLink,
+  FileText,
   Plus,
+  ShieldAlert,
   Trash2,
 } from 'lucide-react'
 
 const logoUrl = '/theervu-logo.png'
 
 export default function SavedItemsPage() {
-  const [activeTab, setActiveTab] = React.useState<'plans' | 'reminders'>('plans')
+  const [activeTab, setActiveTab] = React.useState<'plans' | 'reminders' | 'applications'>('plans')
   const [items, setItems] = React.useState<any[]>([])
   const [reminders, setReminders] = React.useState<any[]>([])
+  const [applications, setApplications] = React.useState<any[]>([])
   const [loading, setLoading] = React.useState(true)
   const [reminderModalOpen, setReminderModalOpen] = React.useState(false)
+  const [applicationModalOpen, setApplicationModalOpen] = React.useState(false)
 
   React.useEffect(() => {
     async function loadData() {
       setLoading(true)
       try {
-        const [savedRes, remindersRes] = await Promise.all([
+        const [savedRes, remindersRes, applicationsRes] = await Promise.all([
           fetch('/api/saved-items').then((r) => r.json()).catch(() => ({ savedItems: [] })),
           fetch('/api/reminders').then((r) => r.json()).catch(() => ({ reminders: [] })),
+          fetch('/api/applications').then((r) => r.json()).catch(() => ({ applications: [] })),
         ])
 
         if (savedRes.savedItems) {
@@ -42,6 +49,9 @@ export default function SavedItemsPage() {
         }
         if (remindersRes.reminders) {
           setReminders(remindersRes.reminders)
+        }
+        if (applicationsRes.applications) {
+          setApplications(applicationsRes.applications)
         }
       } catch (err) {
         console.warn('Could not load dashboard data:', err)
@@ -80,11 +90,55 @@ export default function SavedItemsPage() {
   }
 
   async function handleDeleteReminder(id: string) {
-    setReminders((prev) => prev.filter((r) => r.id !== id))
+    setReminders((prev) => prev.filter((i) => i.id !== id))
     try {
       await fetch(`/api/reminders/${id}`, { method: 'DELETE' })
     } catch (err) {
       console.warn('Failed to delete reminder:', err)
+    }
+  }
+
+  async function handleUpdateApplicationStatus(id: string, newStatus: string) {
+    setApplications((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, status: newStatus } : a))
+    )
+
+    try {
+      await fetch(`/api/applications/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      })
+    } catch (err) {
+      console.warn('Failed to update application status:', err)
+    }
+  }
+
+  async function handleDeleteApplication(id: string) {
+    setApplications((prev) => prev.filter((a) => a.id !== id))
+    try {
+      await fetch(`/api/applications/${id}`, { method: 'DELETE' })
+    } catch (err) {
+      console.warn('Failed to delete application tracker:', err)
+    }
+  }
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'approved':
+      case 'completed':
+        return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">Approved / Issued</Badge>
+      case 'under_review':
+        return <Badge className="bg-amber-50 text-amber-700 border-amber-200">Under Review</Badge>
+      case 'info_requested':
+        return <Badge className="bg-orange-50 text-orange-700 border-orange-200">Action Required</Badge>
+      case 'rejected':
+        return <Badge className="bg-rose-50 text-rose-700 border-rose-200">Rejected</Badge>
+      case 'draft':
+        return <Badge className="bg-slate-100 text-slate-600 border-slate-200">Draft</Badge>
+      case 'submitted':
+      default:
+        return <Badge className="bg-sky-50 text-sky-700 border-sky-200">Submitted</Badge>
     }
   }
 
@@ -126,10 +180,10 @@ export default function SavedItemsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="max-w-2xl">
             <h1 className="text-3xl font-semibold text-[#102b57] sm:text-4xl">
-              Saved Items & Reminders
+              Saved Items & Applications
             </h1>
             <p className="mt-2 text-sm text-slate-600">
-              Access your personalized preparation plans, checklists, and upcoming visit reminders.
+              Access your personalized preparation plans, reminders, and tracked civic applications in one private place.
             </p>
           </div>
 
@@ -141,6 +195,17 @@ export default function SavedItemsPage() {
             >
               <Plus size={14} />
               <span>Add Reminder</span>
+            </Button>
+          )}
+
+          {activeTab === 'applications' && (
+            <Button
+              onClick={() => setApplicationModalOpen(true)}
+              size="sm"
+              className="h-9 bg-[#12366b] text-white hover:bg-[#0d2a55] text-xs font-semibold rounded-xl self-start sm:self-auto gap-1.5"
+            >
+              <Plus size={14} />
+              <span>Track New Application</span>
             </Button>
           )}
         </div>
@@ -157,6 +222,17 @@ export default function SavedItemsPage() {
           >
             <Bookmark size={14} />
             <span>Saved Plans ({items.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('applications')}
+            className={`pb-3 px-4 text-xs font-semibold border-b-2 transition-all flex items-center gap-2 ${
+              activeTab === 'applications'
+                ? 'border-[#12366b] text-[#12366b]'
+                : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <FileText size={14} />
+            <span>Tracked Applications ({applications.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('reminders')}
@@ -248,7 +324,148 @@ export default function SavedItemsPage() {
           </div>
         )}
 
-        {/* Tab 2: Reminders */}
+        {/* Tab 2: Tracked Applications (Phase 6 New) */}
+        {activeTab === 'applications' && (
+          <div className="mt-6">
+            {/* Manual Tracking Disclosure Banner */}
+            <div className="mb-5 rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-start gap-2.5">
+                <ShieldAlert className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-semibold text-[#102b57]">Personal Application Tracker</p>
+                  <p className="text-slate-500 mt-0.5">
+                    Indian government departments do not provide public live status APIs. Tracking here is manual and private to help you manage reference numbers and deadlines.
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={() => setApplicationModalOpen(true)}
+                size="sm"
+                className="h-8 bg-[#12366b] text-white hover:bg-[#0d2a55] text-xs font-semibold shrink-0"
+              >
+                <Plus size={13} className="mr-1" /> Add Application
+              </Button>
+            </div>
+
+            {loading ? (
+              <div className="space-y-4">
+                {[1, 2].map((n) => (
+                  <div key={n} className="h-28 rounded-2xl bg-white border border-slate-100 animate-pulse" />
+                ))}
+              </div>
+            ) : applications.length > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {applications.map((app) => (
+                  <Card
+                    key={app.id}
+                    className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-xs"
+                  >
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        {getStatusBadge(app.status)}
+                        <div className="flex items-center gap-1">
+                          <select
+                            value={app.status}
+                            onChange={(e) => handleUpdateApplicationStatus(app.id, e.target.value)}
+                            className="text-[11px] rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-slate-700 outline-none cursor-pointer"
+                            aria-label="Update status"
+                          >
+                            <option value="draft">Draft</option>
+                            <option value="submitted">Submitted</option>
+                            <option value="under_review">Under Review</option>
+                            <option value="info_requested">Action Required</option>
+                            <option value="approved">Approved</option>
+                            <option value="completed">Completed</option>
+                            <option value="rejected">Rejected</option>
+                          </select>
+                          <button
+                            onClick={() => handleDeleteApplication(app.id)}
+                            className="text-slate-400 hover:text-red-500 transition-colors p-1"
+                            aria-label="Delete application"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <h3 className="text-base font-semibold text-[#102b57]">
+                        {app.service_name}
+                      </h3>
+
+                      {app.authority && (
+                        <p className="text-xs text-slate-500 font-medium">
+                          {app.authority}
+                        </p>
+                      )}
+
+                      {app.reference_number && (
+                        <div className="inline-block rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-mono text-slate-700">
+                          Ref: {app.reference_number}
+                        </div>
+                      )}
+
+                      {app.next_action && (
+                        <div className="rounded-lg bg-amber-50/70 border border-amber-200/50 p-2 text-xs text-amber-900">
+                          <strong>Next Step:</strong> {app.next_action}
+                          {app.next_action_deadline && (
+                            <span className="block text-[11px] text-amber-700 mt-0.5">
+                              Deadline: {app.next_action_deadline}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {app.notes && (
+                        <p className="text-xs text-slate-500 italic">
+                          &quot;{app.notes}&quot;
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+                      <span>
+                        {app.submission_date ? `Submitted: ${app.submission_date}` : 'Status tracked'}
+                      </span>
+                      {app.portal_url && (
+                        <a
+                          href={app.portal_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[#12366b] hover:underline font-medium"
+                        >
+                          <span>Official Portal</span>
+                          <ExternalLink size={12} />
+                        </a>
+                      )}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-12 text-center space-y-4">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 text-slate-400">
+                  <FileText size={24} />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-base font-semibold text-[#102b57]">No tracked applications</p>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                    Keep your government application reference numbers, submission dates, and appointment steps organized.
+                  </p>
+                </div>
+                <Button
+                  onClick={() => setApplicationModalOpen(true)}
+                  size="sm"
+                  className="bg-[#12366b] text-white hover:bg-[#0d2a55]"
+                >
+                  <Plus size={14} className="mr-1.5" />
+                  Track Your First Application
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab 3: Reminders */}
         {activeTab === 'reminders' && (
           <div className="mt-6">
             {/* Reminder scope & notification permission banner */}
@@ -411,6 +628,12 @@ export default function SavedItemsPage() {
         open={reminderModalOpen}
         onOpenChange={setReminderModalOpen}
         onSuccess={(newReminder) => setReminders((prev) => [newReminder, ...prev])}
+      />
+
+      <AddApplicationModal
+        isOpen={applicationModalOpen}
+        onClose={() => setApplicationModalOpen(false)}
+        onSuccess={(newApp) => setApplications((prev) => [newApp, ...prev])}
       />
     </div>
   )

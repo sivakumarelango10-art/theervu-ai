@@ -45,8 +45,27 @@ This document provides a transparent, honest inventory of the platform's current
 
 ---
 
-## 5. Offline & Unconfigured Fallback Mode
+## 5. Government Application Tracking Boundaries (Phase 6)
+
+- **No Public Live Government APIs**:
+  - Indian government departments (Passport Seva, Parivahan, UIDAI, e-District, Income Tax) do not provide open, public third-party REST APIs for real-time automated application status polling.
+  - TheervuAI strictly rejects making false claims of automated status polling.
+  - **Manual Recordkeeping**: Tracking is entirely user-managed to help citizens securely store their Application Reference Numbers (ARN), document submission dates, and track next action deadlines.
+  - Reference numbers and personal notes are private to the user account and never exposed or queried against unauthorized external endpoints.
+
+---
+
+## 6. Location-Aware Guidance Boundaries (Phase 6)
+
+- **User-Controlled Filtering**:
+  - TheervuAI deliberately avoids using HTML5 Geolocation API (`navigator.geolocation`) or IP-based geolocation lookups to protect citizen privacy.
+  - Location filtering is driven 100% by user selection in the `LocationSelector` component.
+  - If no location is selected, the platform defaults to `All India` national guidance.
+
+---
+
+## 7. Offline & Unconfigured Fallback Mode
 
 - **Graceful Local Fallback**:
   - When external API keys (`GEMINI_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`) are not yet configured in local development, TheervuAI operates in verified fallback mode.
-  - In this mode, pre-compiled verified procedures and mock databases allow complete UI/UX navigation without unhandled network exceptions.
+  - In this mode, pre-compiled verified procedures and deterministic catalogs (`SEED_SERVICES`) allow complete UI/UX navigation without unhandled network exceptions.

@@ -2,12 +2,24 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { UserNav } from '@/components/auth/UserNav'
 import { type CivicService, SEED_SERVICES } from '@/lib/data/services'
-import { ArrowLeft, ArrowRight, ExternalLink, Landmark, Search } from 'lucide-react'
+import { LocationSelector } from '@/components/location/LocationSelector'
+import { ServiceDetailModal } from '@/components/services/ServiceDetailModal'
+import {
+  ArrowLeft,
+  ArrowRight,
+  ExternalLink,
+  Search,
+  ShieldCheck,
+  Clock,
+  Building,
+  CalendarCheck2,
+  FileText,
+} from 'lucide-react'
 
 const logoUrl = '/theervu-logo.png'
 
@@ -17,13 +29,19 @@ const categories = [
   'Identity & Passports',
   'Civil Supplies & Welfare',
   'Healthcare & Welfare',
-  'Municipal & Civil Registration',
+  'Revenue & Certificates',
+  'Municipal & Property',
+  'Pensions & Social Security',
+  'Employment & Rights',
 ]
 
 export default function ServicesPage() {
   const [services, setServices] = React.useState<CivicService[]>(SEED_SERVICES)
   const [selectedCategory, setSelectedCategory] = React.useState('All')
   const [searchQuery, setSearchQuery] = React.useState('')
+  const [selectedState, setSelectedState] = React.useState('All India')
+  const [selectedDistrict, setSelectedDistrict] = React.useState('')
+  const [selectedServiceForModal, setSelectedServiceForModal] = React.useState<CivicService | null>(null)
   const [loading, setLoading] = React.useState(false)
 
   React.useEffect(() => {
@@ -33,6 +51,8 @@ export default function ServicesPage() {
         const params = new URLSearchParams()
         if (selectedCategory !== 'All') params.set('category', selectedCategory)
         if (searchQuery.trim()) params.set('q', searchQuery.trim())
+        if (selectedState && selectedState !== 'All India') params.set('state', selectedState)
+        if (selectedDistrict.trim()) params.set('district', selectedDistrict.trim())
 
         const res = await fetch(`/api/services?${params.toString()}`)
         const data = await res.json()
@@ -48,7 +68,7 @@ export default function ServicesPage() {
 
     const timer = setTimeout(loadServices, 250)
     return () => clearTimeout(timer)
-  }, [selectedCategory, searchQuery])
+  }, [selectedCategory, searchQuery, selectedState, selectedDistrict])
 
   return (
     <div className="min-h-screen bg-[#fbfcfe] text-slate-900">
@@ -85,28 +105,42 @@ export default function ServicesPage() {
           </Link>
         </div>
 
-        <div className="max-w-2xl">
-          <span className="text-xs font-bold uppercase tracking-[.16em] text-[#159b81]">
-            Verified Information
-          </span>
-          <h1 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#102b57] sm:text-4xl">
-            Civic & Institutional Services
-          </h1>
-          <p className="mt-3 text-sm leading-relaxed text-slate-600">
-            Explore verified requirements, required documents, and counter guidance for everyday public services.
-          </p>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold uppercase tracking-[.14em] text-emerald-700 border border-emerald-200/50">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Verified Civic Intelligence
+            </div>
+            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#102b57] sm:text-4xl">
+              Civic & Institutional Services
+            </h1>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">
+              Verified requirements, mandatory documents, official fee structures, and counter procedures for government and public services across India.
+            </p>
+          </div>
+
+          {/* Location Selector */}
+          <div className="shrink-0">
+            <LocationSelector
+              selectedState={selectedState}
+              selectedDistrict={selectedDistrict}
+              onStateChange={(st) => setSelectedState(st)}
+              onDistrictChange={(dist) => setSelectedDistrict(dist)}
+            />
+          </div>
         </div>
 
         {/* Search Bar & Category Filters */}
         <div className="mt-8 space-y-4">
-          <div className="relative max-w-lg">
+          <div className="relative max-w-xl">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search services (e.g., Licence, Passport, Ayushman, Ration)..."
+              placeholder="Search services (e.g. Driving Licence, Passport, Ayushman Card, Ration)..."
               className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-800 outline-none focus:border-[#12366b] focus:ring-2 focus:ring-[#12366b]/10"
+              aria-label="Search civic services"
             />
           </div>
 
@@ -128,60 +162,102 @@ export default function ServicesPage() {
           </div>
         </div>
 
+        {/* Services Count Header */}
+        <div className="mt-6 flex items-center justify-between text-xs text-slate-500 border-b border-slate-100 pb-3">
+          <span>
+            Showing <strong className="text-slate-800">{services.length}</strong> verified services
+            {selectedState !== 'All India' ? ` in ${selectedState}` : ''}
+            {selectedDistrict ? ` (${selectedDistrict})` : ''}
+          </span>
+          {loading && <span className="text-xs text-amber-600 animate-pulse">Updating...</span>}
+        </div>
+
         {/* Services Grid */}
-        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {services.map((svc) => (
             <Card
               key={svc.id}
               className="group flex flex-col justify-between rounded-2xl border border-slate-200/90 bg-white p-6 shadow-xs hover:border-slate-300 hover:shadow-md transition-all"
             >
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <Badge variant="outline" className="border-teal-200 bg-teal-50 text-[#159b81] text-[10px]">
                     {svc.category}
                   </Badge>
-                  <span className="text-[11px] text-slate-400">{svc.state}</span>
+                  <span className="text-[11px] font-medium text-slate-400">
+                    {svc.state}
+                  </span>
                 </div>
 
-                <h3 className="text-lg font-semibold text-[#102b57] leading-snug">
+                <h3 className="text-base font-semibold text-[#102b57] leading-snug group-hover:text-[#12366b] transition-colors">
                   {svc.name}
                 </h3>
 
                 <p className="text-xs font-medium text-slate-400 leading-snug">
-                  {svc.authority}
+                  {svc.department} • {svc.authority}
                 </p>
 
-                <p className="text-xs leading-relaxed text-slate-600">
+                <p className="text-xs leading-relaxed text-slate-600 line-clamp-2">
                   {svc.description}
                 </p>
+
+                {/* Key metadata pills */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px] text-slate-500">
+                  <span className="inline-flex items-center gap-1 rounded bg-slate-50 px-2 py-0.5 border border-slate-100">
+                    <Building className="h-3 w-3 text-slate-400" />
+                    {svc.officeType}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded bg-slate-50 px-2 py-0.5 border border-slate-100">
+                    <Clock className="h-3 w-3 text-slate-400" />
+                    {svc.expectedTimeline}
+                  </span>
+                  {svc.appointmentRequired && (
+                    <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-2 py-0.5 border border-amber-200/60 text-amber-800 font-medium">
+                      <CalendarCheck2 className="h-3 w-3" />
+                      Appt. Req.
+                    </span>
+                  )}
+                </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
-                <a
-                  href={svc.officialUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-[#12366b] font-medium"
+              {/* Actions */}
+              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedServiceForModal(svc)}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-[#12366b] transition-colors"
                 >
-                  <span>Official Portal</span>
-                  <ExternalLink size={12} />
-                </a>
+                  <FileText size={13} />
+                  <span>View Details</span>
+                </button>
 
-                <Button
-                  asChild
-                  size="sm"
-                  className="h-8 rounded-lg bg-[#12366b] px-3 text-xs font-semibold text-white hover:bg-[#0d2a55]"
-                >
-                  <Link
-                    href={`/before-you-go?task=${encodeURIComponent(svc.name)}&service=${encodeURIComponent(
-                      svc.slug
-                    )}`}
-                    className="gap-1.5"
+                <div className="flex items-center gap-2">
+                  <a
+                    href={svc.officialSourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={`Open ${svc.sourceName}`}
+                    className="p-1.5 text-slate-400 hover:text-[#12366b] transition-colors rounded-md hover:bg-slate-50"
                   >
-                    <span>Prepare</span>
-                    <ArrowRight size={13} />
-                  </Link>
-                </Button>
+                    <ExternalLink size={14} />
+                  </a>
+
+                  <Button
+                    asChild
+                    size="sm"
+                    className="h-8 rounded-lg bg-[#12366b] px-3 text-xs font-semibold text-white hover:bg-[#0d2a55]"
+                  >
+                    <Link
+                      href={`/before-you-go?task=${encodeURIComponent(svc.name)}&service=${encodeURIComponent(
+                        svc.slug
+                      )}`}
+                      className="gap-1"
+                    >
+                      <span>Prepare</span>
+                      <ArrowRight size={13} />
+                    </Link>
+                  </Button>
+                </div>
               </div>
             </Card>
           ))}
@@ -189,13 +265,20 @@ export default function ServicesPage() {
 
         {services.length === 0 && !loading && (
           <div className="py-16 text-center">
-            <p className="text-sm font-semibold text-slate-600">No matching services found.</p>
+            <p className="text-sm font-semibold text-slate-600">No matching verified services found.</p>
             <p className="mt-1 text-xs text-slate-400">
-              Try searching with different keywords or browse by category.
+              Try adjusting your state filter or search keywords.
             </p>
           </div>
         )}
       </main>
+
+      {/* Service Detail Modal */}
+      <ServiceDetailModal
+        service={selectedServiceForModal}
+        isOpen={!!selectedServiceForModal}
+        onClose={() => setSelectedServiceForModal(null)}
+      />
     </div>
   )
 }

@@ -6,6 +6,7 @@ import {
   type FallbackPreparationPlan,
 } from '@/lib/ai/fallback'
 import { evaluateSafety } from '@/lib/ai/safety'
+import { getHybridRetrievalContext } from '@/lib/ai/hybrid'
 import {
   geminiPreparationPlanSchema,
   structuredBeforeYouGoSchema,
@@ -40,6 +41,8 @@ export async function generateGeminiPreparationPlan(
 
   try {
     const languageInstruction = buildLanguageInstruction(preferredLanguage)
+    const hybrid = getHybridRetrievalContext(task, location || options?.state)
+
     const contextDetails = [
       `Task: ${task}`,
       `Location: ${location || options?.state || 'All India'}`,
@@ -52,7 +55,9 @@ export async function generateGeminiPreparationPlan(
       .filter(Boolean)
       .join('\n')
 
-    const prompt = `${contextDetails}
+    const hybridContextBlock = hybrid.hybridSystemContext ? `\n\n${hybrid.hybridSystemContext}` : ''
+
+    const prompt = `${contextDetails}${hybridContextBlock}
 
 Please generate a comprehensive Preparation Plan conforming strictly to the requested JSON schema.
 UNCERTAINTY RULES:

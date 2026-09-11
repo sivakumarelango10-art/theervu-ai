@@ -464,3 +464,115 @@ Submit corrections, missing counter steps, outdated fees, or satisfaction rating
   }
   ```
 
+---
+
+## 15. Phase 6: Verified Services Directory & Multi-Axis Filtering
+
+### `GET /api/services`
+Retrieve verified civic and government services with multi-dimensional filtering.
+
+- **Query Parameters**:
+  - `q` or `search` (string): Keyword search matching name, description, department, authority, documents.
+  - `category` (string): Filter by civic category (e.g. `Transport & RTO`, `Identity & Passports`).
+  - `state` (string): Filter by state jurisdiction (`All India`, `Tamil Nadu`, `Karnataka`, etc.).
+  - `district` (string): Filter by administrative district.
+  - `slug` (string): Lookup single service by URL-safe slug.
+- **Response (`200 OK`)**:
+  ```json
+  {
+    "services": [
+      {
+        "id": "00000000-0000-0000-0000-000000000003",
+        "name": "Fresh Passport Application",
+        "slug": "fresh-passport-application",
+        "category": "Identity & Passports",
+        "department": "Consular, Passport and Visa (CPV) Division",
+        "authority": "Ministry of External Affairs (MEA)",
+        "state": "All India",
+        "officeType": "Passport Seva Kendra (PSK) / Post Office PSK (POPSK)",
+        "officialSourceUrl": "https://www.passportindia.gov.in/",
+        "sourceName": "Passport Seva Online Portal",
+        "verificationStatus": "verified",
+        "appointmentRequired": true,
+        "fees": [
+          { "name": "Standard Fresh Passport", "amount": "₹1,500", "paymentMode": "Online" }
+        ],
+        "expectedTimeline": "10 to 20 working days",
+        "requiredDocuments": [
+          { "name": "Proof of Date of Birth", "description": "Municipal birth certificate", "mandatory": true }
+        ]
+      }
+    ],
+    "total": 12,
+    "source": "verified_catalog"
+  }
+  ```
+
+---
+
+## 16. Phase 6: Application Status Tracking
+
+### `GET /api/applications`
+List all tracked civic applications belonging to the authenticated user.
+
+- **Authentication**: Required (`auth.uid() = user_id`).
+- **Response (`200 OK`)**:
+  ```json
+  {
+    "applications": [
+      {
+        "id": "app-uuid",
+        "service_name": "Fresh Passport Application",
+        "authority": "RPO Chennai",
+        "reference_number": "ARN-2026-98124",
+        "status": "submitted",
+        "submission_date": "2026-09-11",
+        "next_action": "Visit PSK for biometrics",
+        "next_action_deadline": "2026-09-20",
+        "notes": "Carried original 10th marksheet and Aadhaar"
+      }
+    ]
+  }
+  ```
+
+### `POST /api/applications`
+Create a new manual application tracker record.
+
+- **Authentication**: Required.
+- **Request Body**:
+  ```json
+  {
+    "service_name": "Driving Licence Renewal",
+    "authority": "RTO Chennai West",
+    "reference_number": "DL-TN-02-2026-891",
+    "portal_url": "https://sarathi.parivahan.gov.in",
+    "status": "submitted",
+    "submission_date": "2026-09-11",
+    "next_action": "Visit counter 3 with Form 1A",
+    "next_action_deadline": "2026-09-25",
+    "notes": "Token booked for 11:30 AM"
+  }
+  ```
+
+### `PATCH /api/applications/[id]`
+Update status (`draft`, `submitted`, `under_review`, `info_requested`, `approved`, `rejected`, `completed`) or personal notes.
+
+### `DELETE /api/applications/[id]`
+Permanently delete an application tracker (user ownership verified).
+
+---
+
+## 17. Phase 6: Admin Governance & Registry
+
+### `GET /api/admin/services`
+Retrieve all registered services including drafts and archival records.
+- **Authentication**: Required (role `admin` or email in `ADMIN_EMAILS`).
+
+### `POST /api/admin/services`
+Publish a new or updated verified service record into `public.services`.
+- **Authentication**: Required (admin).
+
+### `GET /api/admin/feedback`
+Retrieve and audit qualitative citizen feedback and rating submissions.
+- **Authentication**: Required (admin).
+

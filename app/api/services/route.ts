@@ -1,49 +1,78 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { SEED_SERVICES } from '@/lib/data/services'
+import { SEED_SERVICES, searchServices, getServiceBySlug } from '@/lib/data/services'
 import { env } from '@/lib/config/env'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
-  const category = searchParams.get('category')
-  const search = searchParams.get('q')?.toLowerCase()
+  const slug = searchParams.get('slug')
+  const category = searchParams.get('category') || undefined
+  const search = searchParams.get('q') || searchParams.get('search') || undefined
+  const state = searchParams.get('state') || undefined
+  const district = searchParams.get('district') || undefined
 
+  // Single service lookup by slug
+  if (slug) {
+    const matched = getServiceBySlug(slug)
+    if (matched) {
+      return NextResponse.json({ service: matched })
+    }
+  }
+
+  // If Supabase is not configured, use the verified deterministic catalog
   if (!env.supabase.isConfigured) {
-    let filtered = SEED_SERVICES
-    if (category && category !== 'all') {
-      filtered = filtered.filter((s) => s.category.toLowerCase().includes(category.toLowerCase()))
-    }
-    if (search) {
-      filtered = filtered.filter(
-        (s) =>
-          s.name.toLowerCase().includes(search) ||
-          s.description.toLowerCase().includes(search) ||
-          s.authority.toLowerCase().includes(search)
-      )
-    }
-    return NextResponse.json({ services: filtered })
+    const services = searchServices(search || '', category, state, district)
+    return NextResponse.json({
+      services,
+      total: services.length,
+      source: 'verified_catalog',
+    })
   }
 
   try {
     const supabase = await createClient()
     let query = supabase.from('services').select('*').eq('status', 'active')
 
-    if (category && category !== 'all') {
+    if (category && category.toLowerCase() !== 'all') {
       query = query.ilike('category', `%${category}%`)
     }
-    if (search) {
-      query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%,authority.ilike.%${search}%`)
+
+    if (state && state !== 'All India') {
+      query = query.or(`state.eq.All India,state.ilike.%${state}%`)
+    }
+
+    if (district) {
+      query = query.or(`district.is.null,district.ilike.%${district}%`)
+    }
+
+    if (search && search.trim().length > 0) {
+      const q = search.trim()
+      query = query.or(`name.ilike.%${q}%,description.ilike.%${q}%,department.ilike.%${q}%,authority.ilike.%${q}%`)
     }
 
     const { data, error } = await query
 
     if (error || !data || data.length === 0) {
-      // Return seed fallback if DB table is empty
-      return NextResponse.json({ services: SEED_SERVICES })
+      // Graceful fallback to verified catalog
+      const fallbackServices = searchServices(search || '', category, state, district)
+      return NextResponse.json({
+        services: fallbackServices,
+        total: fallbackServices.length,
+        source: 'verified_catalog',
+      })
     }
 
-    return NextResponse.json({ services: data })
+    return NextResponse.json({
+      services: data,
+      total: data.length,
+      source: 'database',
+    })
   } catch {
-    return NextResponse.json({ services: SEED_SERVICES })
+    const fallbackServices = searchServices(search || '', category, state, district)
+    return NextResponse.json({
+      services: fallbackServices,
+      total: fallbackServices.length,
+      source: 'verified_catalog',
+    })
   }
 }
