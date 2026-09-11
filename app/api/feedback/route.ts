@@ -3,9 +3,26 @@ import { feedbackSchema } from '@/lib/validation/schemas'
 import { createClient } from '@/lib/supabase/server'
 import { env } from '@/lib/config/env'
 
+import { getClientIp, checkRateLimit } from '@/lib/security/rate-limit'
+
 export async function POST(request: Request) {
+  const ip = getClientIp(request)
+  const rl = checkRateLimit(`feedback_${ip}`, 15, 60)
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: 'Feedback submission limit reached. Please try again later.' },
+      { status: 429, headers: { 'Retry-After': String(rl.reset) } }
+    )
+  }
+
+  let json: any
   try {
-    const json = await request.json()
+    json = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
+
+  try {
     const result = feedbackSchema.safeParse(json)
 
     if (!result.success) {
@@ -15,7 +32,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const { category, rating, message, page_context } = result.data
+    const { category, feedback_type, feature, related_record_id, rating, message, page_context } = result.data
 
     if (env.supabase.isConfigured) {
       try {
@@ -28,7 +45,7 @@ export async function POST(request: Request) {
           user_id: user?.id || null,
           category,
           rating,
-          message,
+          message: `${feedback_type ? `[${feedback_type}] ` : ''}${feature ? `(${feature}) ` : ''}${message}`,
           page_context: page_context || '/',
         })
       } catch (err) {

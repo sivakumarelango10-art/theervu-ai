@@ -19,6 +19,11 @@ export const prepareRequestSchema = z.object({
   location: z.string().optional(),
   serviceSlug: z.string().optional(),
   purpose: z.string().optional(),
+  appointmentStatus: z.enum(['booked', 'walk_in', 'not_required', 'unknown']).optional(),
+  visitorType: z.enum(['first_time', 'renewal', 'correction', 'dependent', 'general']).optional(),
+  deadline: z.string().optional(),
+  state: z.string().optional(),
+  district: z.string().optional(),
   preferredLanguage: z.string().default('en'),
 })
 
@@ -31,9 +36,24 @@ export const updateChecklistItemSchema = z.object({
 export type UpdateChecklistItem = z.infer<typeof updateChecklistItemSchema>
 
 export const feedbackSchema = z.object({
-  category: z.enum(['general', 'plan_accuracy', 'usability', 'bug', 'missing_service']),
-  rating: z.number().int().min(1).max(5),
-  message: z.string().min(5, { message: 'Message must be at least 5 characters.' }).max(2000),
+  category: z
+    .enum(['general', 'plan_accuracy', 'usability', 'bug', 'missing_service'])
+    .default('general'),
+  feedback_type: z
+    .enum([
+      'helpful',
+      'not_helpful',
+      'incorrect_info',
+      'outdated_info',
+      'technical_issue',
+      'missing_service',
+      'improvement',
+    ])
+    .optional(),
+  feature: z.string().max(100).optional(),
+  related_record_id: z.string().max(100).optional(),
+  rating: z.number().int().min(1).max(5).default(5),
+  message: z.string().min(3, { message: 'Message must be at least 3 characters.' }).max(2000),
   page_context: z.string().optional(),
 })
 

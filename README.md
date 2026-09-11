@@ -65,13 +65,16 @@ pnpm build
 
 ## Core Capabilities
 
-1. **Universal AI Assistant**: Plain-language civic advice, required counter actions, and official verification links.
-2. **Before You Go & Dynamic Checklist**: Section 6 structured preparation plans (`steps`, `documents`, `fees`, `timing`, `warnings`, `sourceNotes`) with interactive toggling and persistence.
+1. **Universal AI Assistant**: Plain-language civic advice, required counter actions, and official verification links with voice dictation and read-aloud capabilities.
+2. **Before You Go & Dynamic Checklist**: Section 6 structured preparation plans (`steps`, `documents`, `fees`, `timing`, `warnings`, `sourceNotes`) with interactive toggling, uncertainty labeling, and persistence.
 3. **Verified Civic Services Directory**: Searchable directory of public procedures across RTO, Passports, Civil Supplies, Healthcare, and Identity.
-4. **Multimodal Document Explanation**: Secure upload and plain-language explanation of notices, forms, and medical discharge summaries with safety disclaimers.
-5. **Saved Plans & Profile Settings**: Bookmark preparation plans and set preferred regional AI languages across 9 Indian languages.
-6. **Built-in Safety Layer**: Prompt injection protection, healthcare disclaimer enforcement, and emergency escalation to 112 / 108.
-7. **Development Fallback Mode**: Operates seamlessly with verified procedures even before external API keys are configured.
+4. **Multimodal Document Intelligence**: High-accuracy document intelligence across 9 specialized workflows (`explain`, `summarize`, `extract_info`, `required_actions`, `missing_info`, `important_dates`, `qa`, `difficult_terms`, `next_steps`) supporting PDF, PNG, JPG, WebP.
+5. **Indian Regional Languages**: Full support for 11 regional languages (Tamil, Hindi, Telugu, Kannada, Malayalam, Bengali, Marathi, Gujarati, Punjabi, Odia, English) with Unicode script detection, preservation of sensitive IDs, and Sarvam AI integration.
+6. **Voice Input & Accessibility**: Microphone dictation (`useVoiceInput`) and text-to-speech reading (`useVoiceOutput`) with privacy safeguards (zero audio storage, zero autoplay).
+7. **User-Controlled Reminders**: Integrated calendar reminders and deadlines linked to preparation plans with priority levels and PostgreSQL persistence.
+8. **Feedback & Verification**: Community quality reporting system for outdated fees, missing counter steps, and procedural accuracy.
+9. **Built-in Safety Layer**: Prompt injection protection, healthcare disclaimer enforcement, and emergency escalation to 112 / 108.
+10. **Development Fallback Mode**: Operates seamlessly with verified procedures even before external API keys are configured.
 
 ---
 
@@ -79,9 +82,16 @@ pnpm build
 
 1. [Google Gemini Setup Guide](GEMINI_SETUP.md) — Model verification (`gemini-3.8-flash`), configuration, and SDK usage.
 2. [Supabase Setup & Database Guide](SUPABASE_SETUP.md) — PostgreSQL connection, pooler, Google OAuth, and RLS policies.
-3. [API Documentation](API_DOCUMENTATION.md) — Detailed reference for all 16 REST endpoints with Zod schemas.
-4. [Database Health Audit](DATABASE_HEALTH.md) — Schema verification, foreign keys, triggers, and query consistency.
-5. [Security & Authorization Audit](SECURITY_AUDIT.md) — Defense-in-depth, token security, rate limiting, and IDOR protection.
-6. [Deployment Guide](DEPLOYMENT_GUIDE.md) — Step-by-step production deployment to Vercel with Supabase and Gemini.
-7. [Troubleshooting Guide](TROUBLESHOOTING.md) — Common diagnostic patterns, OAuth setup, and error recovery.
-8. [Phase 3 Verification Report](PHASE_3_VERIFICATION.md) — Complete audit results, test logs, and production readiness certification.
+3. [API Documentation](API_DOCUMENTATION.md) — Reference for all 25 REST endpoints with Zod schemas.
+4. [Database Health Audit](DATABASE_HEALTH.md) — 11-table schema verification, foreign keys, triggers, and query consistency.
+5. [Security & Authorization Audit](SECURITY_AUDIT.md) — Defense-in-depth, token security, rate limiting, audio privacy, and IDOR protection.
+6. [Multimodal Document Intelligence Setup](MULTIMODAL_SETUP.md) — 9 workflows, file formats, and extraction schemas.
+7. [Regional Language Support Guide](LANGUAGE_SUPPORT.md) — 11 Indian languages, Unicode script detection, and Sarvam AI integration.
+8. [Voice System Setup & Architecture](VOICE_SETUP.md) — Speech-to-text, text-to-speech, browser APIs, and privacy safeguards.
+9. [Reminders & Deadline System](REMINDERS_SETUP.md) — Reminder schema, RLS policies, and dashboard integration.
+10. [Feedback & Quality Reporting](FEEDBACK_SYSTEM.md) — Feedback categories, abuse prevention, and verification triage.
+11. [Deployment Guide](DEPLOYMENT_GUIDE.md) — Step-by-step production deployment to Vercel with Supabase and Gemini.
+12. [Troubleshooting Guide](TROUBLESHOOTING.md) — Common diagnostic patterns, OAuth setup, and error recovery.
+13. [Phase 3 Verification Report](PHASE_3_VERIFICATION.md) — Phase 3 audit results, test logs, and stabilization certification.
+14. [Phase 4 Verification Report](PHASE_4_VERIFICATION.md) — Phase 4 multimodal, multilingual, voice, and personalization verification.
+

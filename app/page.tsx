@@ -17,9 +17,13 @@ import {
   Loader2,
   Menu,
   Mic,
+  MicOff,
   Paperclip,
   Search,
   ShieldCheck,
+  Square,
+  Volume2,
+  VolumeX,
   X,
   Zap,
 } from 'lucide-react'
@@ -37,6 +41,9 @@ import {
 import { UserNav } from '@/components/auth/UserNav'
 import { DocumentUploadModal } from '@/components/documents/DocumentUploadModal'
 import { FeedbackModal } from '@/components/feedback/FeedbackModal'
+import { useVoiceInput } from '@/hooks/useVoiceInput'
+import { useVoiceOutput } from '@/hooks/useVoiceOutput'
+import { LANGUAGE_LIST, getLanguageByCode } from '@/lib/i18n/languages'
 
 const logoUrl =
   'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/ChatGPT%20Image%20Sep%2011%2C%202026%2C%2012_32_08%20PM-ujooLO8049TXC3GzHMoaAhqYO0csBM.png'
@@ -132,8 +139,19 @@ export default function Page() {
     isEmergency?: boolean
   } | null>(null)
 
-  // Speech Recognition state
-  const [isListening, setIsListening] = React.useState(false)
+  // Regional Language selection
+  const [selectedLang, setSelectedLang] = React.useState('en')
+
+  // Modular Voice Input Hook
+  const voiceInput = useVoiceInput({
+    defaultLanguage: selectedLang,
+    onTranscript: (text) => {
+      form.setValue('question', text, { shouldValidate: true })
+    },
+  })
+
+  // Modular Voice Output Hook
+  const voiceOutput = useVoiceOutput()
 
   const form = useForm<QueryFormValues>({
     resolver: zodResolver(querySchema),
@@ -145,6 +163,7 @@ export default function Page() {
   async function onSubmit(values: QueryFormValues) {
     setLoading(true)
     setAiResponse(null)
+    voiceOutput.stop()
 
     try {
       const res = await fetch('/api/ai/chat', {
@@ -152,6 +171,7 @@ export default function Page() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           question: values.question,
+          preferredLanguage: selectedLang,
         }),
       })
 
@@ -177,33 +197,15 @@ export default function Page() {
   function handlePromptClick(promptText: string) {
     form.setValue('question', promptText, { shouldValidate: true })
     setAiResponse(null)
+    voiceOutput.stop()
   }
 
-  function handleVoiceInput() {
-    if (typeof window === 'undefined') return
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-
-    if (!SpeechRecognition) {
-      alert('Voice dictation is not supported in your current browser.')
-      return
+  function toggleVoiceInput() {
+    if (voiceInput.isListening) {
+      voiceInput.stopListening()
+    } else {
+      voiceInput.startListening(selectedLang)
     }
-
-    const recognition = new SpeechRecognition()
-    recognition.lang = 'en-IN'
-    recognition.interimResults = false
-
-    recognition.onstart = () => setIsListening(true)
-    recognition.onend = () => setIsListening(false)
-    recognition.onerror = () => setIsListening(false)
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript
-      if (transcript) {
-        form.setValue('question', transcript, { shouldValidate: true })
-      }
-    }
-
-    recognition.start()
   }
 
   function handleCapabilityClick(action: string) {
@@ -410,17 +412,39 @@ export default function Page() {
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={handleVoiceInput}
-                                  aria-label="Use microphone for voice typing"
-                                  title="Voice typing"
+                                  onClick={toggleVoiceInput}
+                                  aria-label={voiceInput.isListening ? "Stop voice dictation" : "Start voice dictation"}
+                                  title={voiceInput.isListening ? "Listening... Click to stop" : "Voice dictation"}
                                   className={`rounded-md p-1.5 transition-colors ${
-                                    isListening
-                                      ? 'bg-rose-50 text-rose-600 animate-pulse'
+                                    voiceInput.isListening
+                                      ? 'bg-rose-100 text-rose-600 animate-pulse'
                                       : 'hover:bg-slate-100 hover:text-slate-600'
                                   }`}
                                 >
-                                  <Mic size={16} />
+                                  {voiceInput.isListening ? <MicOff size={16} /> : <Mic size={16} />}
                                 </button>
+                                {voiceInput.isListening && (
+                                  <span className="text-[11px] font-semibold text-rose-600 animate-pulse pl-1">
+                                    Listening...
+                                  </span>
+                                )}
+
+                                {/* Regional Language Dropdown */}
+                                <div className="ml-2 flex items-center gap-1 border-l border-slate-200 pl-2">
+                                  <Languages size={13} className="text-slate-400" />
+                                  <select
+                                    value={selectedLang}
+                                    onChange={(e) => setSelectedLang(e.target.value)}
+                                    aria-label="Select response language"
+                                    className="bg-transparent text-[11px] font-medium text-slate-600 outline-none hover:text-slate-900 cursor-pointer"
+                                  >
+                                    {LANGUAGE_LIST.map((l) => (
+                                      <option key={l.code} value={l.code}>
+                                        {l.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
                               </div>
                               <Button
                                 type="submit"
@@ -466,19 +490,53 @@ export default function Page() {
                         <span className="font-semibold text-sm text-[#102b57]">
                           {aiResponse.summary}
                         </span>
-                        <Button
-                          asChild
-                          size="xs"
-                          className="h-7 bg-[#12366b] text-white hover:bg-[#0d2a55] text-[11px] font-semibold"
-                        >
-                          <Link
-                            href={`/before-you-go?task=${encodeURIComponent(
-                              form.getValues('question')
-                            )}`}
+                        <div className="flex items-center gap-2">
+                          {/* Voice Read Aloud Button */}
+                          {voiceOutput.isSupported && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (voiceOutput.isPlaying) {
+                                  voiceOutput.stop()
+                                } else {
+                                  voiceOutput.speak(aiResponse.answer, selectedLang)
+                                }
+                              }}
+                              className={`h-7 px-2.5 rounded-lg border text-[11px] font-semibold flex items-center gap-1.5 transition-all ${
+                                voiceOutput.isPlaying
+                                  ? 'border-rose-300 bg-rose-50 text-rose-600'
+                                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                              }`}
+                              title={voiceOutput.isPlaying ? 'Stop voice reading' : 'Read answer aloud'}
+                            >
+                              {voiceOutput.isPlaying ? (
+                                <>
+                                  <Square size={11} className="fill-current" />
+                                  <span>Stop</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Volume2 size={13} className="text-[#159b81]" />
+                                  <span>Listen</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+
+                          <Button
+                            asChild
+                            size="xs"
+                            className="h-7 bg-[#12366b] text-white hover:bg-[#0d2a55] text-[11px] font-semibold"
                           >
-                            Turn into Checklist
-                          </Link>
-                        </Button>
+                            <Link
+                              href={`/before-you-go?task=${encodeURIComponent(
+                                form.getValues('question')
+                              )}`}
+                            >
+                              Turn into Checklist
+                            </Link>
+                          </Button>
+                        </div>
                       </div>
 
                       <p className="text-slate-700 whitespace-pre-line text-xs font-normal">

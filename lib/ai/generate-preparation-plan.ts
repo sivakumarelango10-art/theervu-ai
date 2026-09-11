@@ -12,6 +12,14 @@ import {
   convertStructuredPlanToSections,
 } from '@/lib/ai/schemas'
 
+export interface PreparationPlanOptions {
+  appointmentStatus?: string
+  visitorType?: string
+  deadline?: string
+  state?: string
+  district?: string
+}
+
 /**
  * Generates a structured Before You Go preparation plan using Google Gemini.
  * Employs Section 6 validation with fallback to high-fidelity local procedures.
@@ -19,7 +27,8 @@ import {
 export async function generateGeminiPreparationPlan(
   task: string,
   location?: string,
-  preferredLanguage: string = 'en'
+  preferredLanguage: string = 'en',
+  options?: PreparationPlanOptions
 ): Promise<FallbackPreparationPlan> {
   const safety = evaluateSafety(task)
   const gemini = getGeminiClient()
@@ -31,7 +40,25 @@ export async function generateGeminiPreparationPlan(
 
   try {
     const languageInstruction = buildLanguageInstruction(preferredLanguage)
-    const prompt = `Task: ${task}\nLocation: ${location || 'All India'}\nLanguage: ${preferredLanguage}\n\nPlease generate a comprehensive Preparation Plan conforming strictly to the requested JSON schema. If any fee, timing, or document is unknown, mark it as 'Not specified' or 'verify with official office'.`
+    const contextDetails = [
+      `Task: ${task}`,
+      `Location: ${location || options?.state || 'All India'}`,
+      options?.district ? `District: ${options.district}` : null,
+      options?.appointmentStatus ? `Appointment Status: ${options.appointmentStatus}` : null,
+      options?.visitorType ? `Visitor Category: ${options.visitorType}` : null,
+      options?.deadline ? `Deadline: ${options.deadline}` : null,
+      `Language: ${preferredLanguage}`,
+    ]
+      .filter(Boolean)
+      .join('\n')
+
+    const prompt = `${contextDetails}
+
+Please generate a comprehensive Preparation Plan conforming strictly to the requested JSON schema.
+UNCERTAINTY RULES:
+- Use explicit uncertainty designations where information is variable or unconfirmed.
+- If any fee, counter timing, or required document varies by district or cannot be verified, state "Needs official verification" or "Location-dependent".
+- Never fabricate official fees or office hours.`
 
     const response = await gemini.models.generateContent({
       model: geminiConfig.model,

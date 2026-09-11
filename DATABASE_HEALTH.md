@@ -6,7 +6,7 @@ This document contains the structural audit of the PostgreSQL schema managed via
 
 ## 1. Schema Overview
 
-The database contains **10 normalized tables** defined in [`supabase/migrations/001_initial_schema.sql`](supabase/migrations/001_initial_schema.sql):
+The database contains **11 normalized tables** defined in [`supabase/migrations/001_initial_schema.sql`](supabase/migrations/001_initial_schema.sql) and [`supabase/migrations/002_reminders.sql`](supabase/migrations/002_reminders.sql):
 
 | Table | Purpose | Primary Key | Foreign Keys | RLS Enabled |
 | :--- | :--- | :--- | :--- | :--- |
@@ -20,13 +20,14 @@ The database contains **10 normalized tables** defined in [`supabase/migrations/
 | `documents` | Uploaded document metadata | `id` (UUID) | `profiles(id)` ON DELETE CASCADE | Yes |
 | `saved_items` | Bookmarked plans & services | `id` (UUID) | `profiles(id)` ON DELETE CASCADE | Yes |
 | `feedback` | User ratings & suggestions | `id` (UUID) | `profiles(id)` ON DELETE SET NULL | Yes |
+| `reminders` | User-controlled deadlines & visit dates | `id` (UUID) | `profiles(id)`, `preparation_plans(id)` | Yes |
 
 ---
 
 ## 2. Relationships & Cascades
 
-1. **User Deletion**: If a user deletes their account in `auth.users`, cascade deletes automatically remove their record in `profiles`, all `conversations`, `messages`, `preparation_plans`, `preparation_items`, `documents`, and `saved_items`.
-2. **Plan Deletion**: Deleting a `preparation_plan` cascades automatically to delete all child `preparation_items`.
+1. **User Deletion**: If a user deletes their account in `auth.users`, cascade deletes automatically remove their record in `profiles`, all `conversations`, `messages`, `preparation_plans`, `preparation_items`, `documents`, `saved_items`, and `reminders`.
+2. **Plan Deletion**: Deleting a `preparation_plan` cascades automatically to delete all child `preparation_items`, while setting `reminders.target_plan_id` to `NULL` (preserving the user's scheduled calendar event).
 3. **Conversation Deletion**: Deleting a `conversation` cascades automatically to delete all child `messages`.
 4. **Service Deletion**: If a civic service is deprecated or removed, `preparation_plans.service_id` is set to `NULL` (ON DELETE SET NULL), preserving the user's customized checklist intact.
 
@@ -46,6 +47,8 @@ To ensure high performance under load, targeted B-tree indexes are configured:
 - `idx_preparation_items_plan_id` ON `preparation_items(preparation_plan_id)`
 - `idx_documents_user_id` ON `documents(user_id)`
 - `idx_saved_items_user` ON `saved_items(user_id, item_type)`
+- `idx_reminders_user_due` ON `reminders(user_id, due_date)`
+- `idx_reminders_completed` ON `reminders(user_id, is_completed)`
 
 ---
 
@@ -65,13 +68,15 @@ To ensure high performance under load, targeted B-tree indexes are configured:
 - **Conversations & Messages**: Only the creator can view, insert, update, or delete. Messages enforce existence checks against `conversations.user_id = auth.uid()`.
 - **Preparation Plans & Items**: Users can only read, write, or toggle items belonging to their own plans.
 - **Documents & Storage**: Uploaded files and metadata are private to `auth.uid() = user_id`.
-- **IDOR Protection**: All server routes (`/api/preparation-plans/[id]`, `/api/conversations/[id]`, `/api/documents/[id]`) enforce `user_id = user.id` in addition to RLS policies.
+- **Reminders**: Strictly user-isolated (`auth.uid() = user_id`). Users cannot read, edit, or delete reminders belonging to another user.
+- **IDOR Protection**: All server routes (`/api/preparation-plans/[id]`, `/api/conversations/[id]`, `/api/documents/[id]`, `/api/reminders/[id]`) enforce `user_id = user.id` in addition to RLS policies.
 
 ---
 
 ## 6. Audit & Health Check Results
 
-- **Schema Syntax**: Valid PostgreSQL 14+ syntax verified.
+- **Schema Syntax**: Valid PostgreSQL 14+ syntax verified across migration 001 and 002.
 - **Seed Data**: Valid UUIDs, valid foreign-key defaults, verified government URLs.
 - **Connection Health**: Verified via `/api/health` responding with `status: "reachable"`.
-- **Mismatches Fixed**: Column name `extracted_text` normalized across database schema and document upload route handler.
+- **Phase 4 Additions**: `002_reminders.sql` added with enum checks on `reminder_type` (`appointment`, `deadline`, `renewal`, `follow_up`) and `priority` (`low`, `medium`, `high`, `urgent`).
+

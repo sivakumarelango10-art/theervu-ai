@@ -31,7 +31,7 @@ TheervuAI adheres to strict security standards for civic and healthcare assistan
 
 ## 3. Database Security & Row-Level Security (RLS)
 
-All 10 database tables have RLS enabled (`alter table ... enable row level security;`):
+All 11 database tables have RLS enabled (`alter table ... enable row level security;`):
 
 | Table Name | RLS Status | Policies Enforced | Ownership Rule |
 |---|---|---|---|
@@ -45,9 +45,10 @@ All 10 database tables have RLS enabled (`alter table ... enable row level secur
 | `documents` | **ENABLED** | SELECT, INSERT, UPDATE, DELETE | `auth.uid() = user_id` |
 | `saved_items` | **ENABLED** | SELECT, INSERT, DELETE | `auth.uid() = user_id` |
 | `feedback` | **ENABLED** | INSERT, SELECT | Anyone can submit; users view own (`auth.uid() = user_id`) |
+| `reminders` | **ENABLED** | SELECT, INSERT, UPDATE, DELETE | `auth.uid() = user_id` |
 
 ### 3.1 IDOR Prevention Verification
-- Every single-record API endpoint (`/api/conversations/[id]`, `/api/preparation-plans/[id]`, `/api/documents/[id]`, `/api/saved-items/[id]`) checks `auth.uid() = user_id` at both the application route level and database RLS policy level.
+- Every single-record API endpoint (`/api/conversations/[id]`, `/api/preparation-plans/[id]`, `/api/documents/[id]`, `/api/saved-items/[id]`, `/api/reminders/[id]`) checks `auth.uid() = user_id` at both the application route level and database RLS policy level.
 - Attempting to access another user's UUID returns `404 Not Found` or `401 Unauthorized`, never revealing the existence or metadata of other users' records.
 
 ---
@@ -79,7 +80,12 @@ Implemented in [`lib/security/rate-limit.ts`](file:///e:/theervu-ai/lib/security
 | `/api/ai/chat` | 60 seconds | 20 requests | HTTP 429 (`Retry-After` header) |
 | `/api/ai/prepare` | 60 seconds | 10 requests | HTTP 429 (`Retry-After` header) |
 | `/api/ai/explain-document` | 60 seconds | 10 requests | HTTP 429 (`Retry-After` header) |
+| `/api/ai/document-analyze` | 60 seconds | 10 requests | HTTP 429 (`Retry-After` header) |
+| `/api/translate` | 60 seconds | 20 requests | HTTP 429 (`Retry-After` header) |
+| `/api/voice/transcribe` | 60 seconds | 15 requests | HTTP 429 (`Retry-After` header) |
+| `/api/voice/synthesize` | 60 seconds | 15 requests | HTTP 429 (`Retry-After` header) |
 | `/api/documents/upload` | 60 seconds | 10 uploads | HTTP 429 (`Retry-After` header) |
+| `/api/feedback` | 60 seconds | 10 submissions | HTTP 429 (`Retry-After` header) |
 
 ---
 
@@ -92,6 +98,7 @@ Implemented in [`lib/security/rate-limit.ts`](file:///e:/theervu-ai/lib/security
   - Illegal requests: Intercepted and rejected.
 - **Uncertainty Guardrails**:
   - When fees, office hours, or local municipal rules are not definitively known, the AI is instructed to return `"Not specified"` or `"Please verify with the official office"` rather than hallucinating facts.
+  - Official government domains (`.gov.in`, `.nic.in`) are categorized with highest confidence; private third-party links are tagged as needing verification.
 
 ---
 
@@ -101,3 +108,21 @@ Implemented in [`lib/security/rate-limit.ts`](file:///e:/theervu-ai/lib/security
 - **Client Error Responses**:
   - Generic 500 errors ("An unexpected error occurred") without PostgreSQL stack traces, table definitions, or internal file paths.
   - Rate limit errors return clean HTTP 429 with seconds to reset.
+
+---
+
+## 8. Voice & Audio Privacy Safeguards (Phase 4)
+
+- **Zero Audio Storage**: Audio recordings or voice streams are never permanently stored on disk, in databases, or in object buckets.
+- **Ephemeral Processing**: Dictated audio is processed exclusively in-memory for speech recognition and immediately discarded.
+- **No Background Listening**: Microphone recording is strictly user-triggered (explicit push-to-record). The recording state is prominently visualized with a pulsating badge and instant cancel button.
+- **Client-Side Speech Priority**: When supported by the user's browser, speech recognition and synthesis run 100% locally via the Web Speech API (`window.SpeechRecognition`, `window.speechSynthesis`), transmitting zero audio bytes across external networks.
+- **Zero Audio Autoplay**: Audio synthesis requires explicit user click on the Read Aloud button.
+
+---
+
+## 9. Regional Language & Sensitive Identifier Protection (Phase 4)
+
+- **Preservation of Official Identifiers**: Translation algorithms in `lib/i18n/translation.ts` detect and isolate sensitive civic identifiers (Aadhaar 12-digit patterns, PAN alphanumeric IDs, phone numbers, application reference tokens, and URLs) before translation, guaranteeing they are preserved verbatim and cannot be altered or corrupted during localization.
+- **Server-Side Translation Credentials**: Third-party Indic translation keys (`SARVAM_API_KEY`) are managed exclusively in server-side route handlers and are never exposed in client JavaScript bundles.
+

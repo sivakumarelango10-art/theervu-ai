@@ -200,3 +200,56 @@ export const geminiDocumentExplainSchema = z.object({
 })
 
 export type GeminiDocumentExplain = z.infer<typeof geminiDocumentExplainSchema>
+
+// ==============================================================================
+// Step 4: Advanced Document Extraction Schema
+// ==============================================================================
+
+export const keyInformationItemSchema = z.object({
+  label: z.string(),
+  value: z.string(),
+  confidence: z.enum(['high', 'medium', 'low', 'unknown']).default('unknown'),
+})
+
+export type KeyInformationItem = z.infer<typeof keyInformationItemSchema>
+
+export const importantDateItemSchema = z.object({
+  label: z.string(),
+  date: z.string(),
+  notes: z.string().default(''),
+})
+
+export type ImportantDateItem = z.infer<typeof importantDateItemSchema>
+
+export const requiredActionItemSchema = z.object({
+  title: z.string(),
+  description: z.string().default(''),
+  priority: z.enum(['high', 'medium', 'low']).default('medium'),
+})
+
+export type RequiredActionItem = z.infer<typeof requiredActionItemSchema>
+
+export const advancedDocumentExtractionSchema = z.object({
+  documentType: z.string().default('Official Document'),
+  summary: z.string(),
+  keyInformation: z.array(keyInformationItemSchema).default([]),
+  importantDates: z.array(importantDateItemSchema).default([]),
+  requiredActions: z.array(requiredActionItemSchema).default([]),
+  missingInformation: z.array(z.string()).default([]),
+  warnings: z.array(z.string()).default([]),
+  verificationNotes: z.array(z.string()).default([]),
+})
+
+export type AdvancedDocumentExtraction = z.infer<typeof advancedDocumentExtractionSchema>
+
+export type DocumentWorkflowAction =
+  | 'explain'
+  | 'summarize'
+  | 'extract_info'
+  | 'required_actions'
+  | 'missing_info'
+  | 'important_dates'
+  | 'qa'
+  | 'difficult_terms'
+  | 'next_steps'
+

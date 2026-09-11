@@ -32,10 +32,26 @@ export async function POST(request: Request) {
       )
     }
 
-    const { task, location, preferredLanguage, serviceSlug } = result.data
+    const {
+      task,
+      location,
+      preferredLanguage,
+      serviceSlug,
+      appointmentStatus,
+      visitorType,
+      deadline,
+      state,
+      district,
+    } = result.data
 
     // Generate full preparation plan via Gemini or Fallback
-    const plan = await generatePreparationPlan(task, location, preferredLanguage)
+    const plan = await generatePreparationPlan(task, location, preferredLanguage, {
+      appointmentStatus,
+      visitorType,
+      deadline,
+      state,
+      district,
+    })
 
     // Check if user is authenticated and wishes to persist the plan
     let savedPlanId: string | null = null

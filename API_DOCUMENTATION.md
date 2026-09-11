@@ -268,3 +268,190 @@ System status endpoint returning connectivity health without exposing secrets:
   }
 }
 ```
+
+---
+
+## 10. Phase 4: Multimodal Document Intelligence
+
+### `POST /api/ai/document-analyze`
+Analyze uploaded documents (PDF, PNG, JPG, WebP) across 9 specialized workflows with Step 4 structured extraction.
+
+- **Rate Limit**: 10 requests / min
+- **Request Body**:
+  ```json
+  {
+    "fileBase64": "JVBERi0xLjQKJ...",
+    "mimeType": "application/pdf",
+    "workflow": "extract_info",
+    "language": "en",
+    "userQuery": "What is the expiration date on this certificate?"
+  }
+  ```
+- **Supported Workflows**: `explain`, `summarize`, `extract_info`, `required_actions`, `missing_info`, `important_dates`, `qa`, `difficult_terms`, `next_steps`.
+- **Response (`200 OK`)**:
+  ```json
+  {
+    "workflow": "extract_info",
+    "language": "en",
+    "analysis": "Structured plain-language analysis of document...",
+    "keyInformation": [
+      { "label": "Application ID", "value": "TN-2026-89412", "confidence": "high" }
+    ],
+    "importantDates": [
+      { "event": "Document Expiry", "date": "2027-03-31", "significance": "Renew before date" }
+    ],
+    "requiredActions": [
+      { "step": "Submit signed copy to Taluk office", "deadline": "Within 30 days" }
+    ],
+    "missingInformation": [
+      "Notary seal was not detected on page 2."
+    ],
+    "warnings": [
+      "Do not laminate official document before endorsement."
+    ],
+    "verificationNotes": [
+      "Certificate matches Government of Tamil Nadu digital signature format."
+    ],
+    "executionTimeMs": 1420
+  }
+  ```
+
+---
+
+## 11. Phase 4: Regional Languages & Translation
+
+### `POST /api/translate`
+Translate civic guidance and preparation plans across 11 Indian regional languages, preserving dates, URLs, and IDs.
+
+- **Rate Limit**: 20 requests / min
+- **Request Body**:
+  ```json
+  {
+    "text": "Please bring your original Aadhaar card and 2 photocopies to the RTO.",
+    "targetLanguage": "ta",
+    "sourceLanguage": "en"
+  }
+  ```
+- **Supported Languages**: `en` (English), `ta` (Tamil), `hi` (Hindi), `te` (Telugu), `kn` (Kannada), `ml` (Malayalam), `bn` (Bengali), `mr` (Marathi), `gu` (Gujarati), `pa` (Punjabi), `or` (Odia).
+- **Response (`200 OK`)**:
+  ```json
+  {
+    "translatedText": "தயவுசெய்து உங்கள் அசல் ஆதார் அட்டை மற்றும் 2 நகல்களை RTO-விற்கு கொண்டு வாருங்கள்.",
+    "detectedLanguage": "en",
+    "targetLanguage": "ta",
+    "cached": false
+  }
+  ```
+
+---
+
+## 12. Phase 4: Modular Voice System
+
+### `POST /api/voice/transcribe`
+Transcribe spoken audio input from users into text.
+
+- **Rate Limit**: 15 requests / min
+- **Request Body**:
+  ```json
+  {
+    "audioBase64": "UklGRi...",
+    "mimeType": "audio/webm",
+    "language": "ta"
+  }
+  ```
+- **Response (`200 OK`)**:
+  ```json
+  {
+    "transcript": "எனக்கு புதிய ஓட்டுநர் உரிமம் தேவை",
+    "confidence": 0.94,
+    "language": "ta"
+  }
+  ```
+
+### `POST /api/voice/synthesize`
+Synthesize text into clear speech audio for users with reading difficulties.
+
+- **Rate Limit**: 15 requests / min
+- **Request Body**:
+  ```json
+  {
+    "text": "உங்கள் பாஸ்போர்ட் விண்ணப்பம் சமர்ப்பிக்கப்பட்டது.",
+    "language": "ta",
+    "gender": "female"
+  }
+  ```
+- **Response (`200 OK`)**:
+  ```json
+  {
+    "audioBase64": "UklGRi...",
+    "mimeType": "audio/mp3",
+    "sampleRate": 24000
+  }
+  ```
+
+---
+
+## 13. Phase 4: Reminders & Deadlines
+
+### `GET /api/reminders`
+List all active reminders for the authenticated user (sorted by `due_date asc`).
+
+### `POST /api/reminders`
+Create a user-controlled reminder linked to a visit plan or document deadline.
+
+- **Request Body**:
+  ```json
+  {
+    "title": "Visit RTO Anna Nagar for driving test",
+    "description": "Slot booked for 10:30 AM. Carry Form 1A and fee receipt.",
+    "dueDate": "2026-09-18T10:30:00Z",
+    "reminderType": "appointment",
+    "priority": "high",
+    "targetPlanId": "optional-uuid"
+  }
+  ```
+- **Response (`201 Created`)**:
+  ```json
+  {
+    "id": "uuid",
+    "title": "Visit RTO Anna Nagar for driving test",
+    "dueDate": "2026-09-18T10:30:00Z",
+    "isCompleted": false,
+    "priority": "high",
+    "createdAt": "2026-09-11T16:00:00Z"
+  }
+  ```
+
+### `PATCH /api/reminders/[id]`
+Toggle completion status or edit due date/title of a reminder (user ownership verified).
+
+### `DELETE /api/reminders/[id]`
+Delete a reminder (user ownership verified).
+
+---
+
+## 14. Phase 4: Feedback & Quality Reporting
+
+### `POST /api/feedback`
+Submit corrections, missing counter steps, outdated fees, or satisfaction ratings.
+
+- **Rate Limit**: 10 submissions / min
+- **Request Body**:
+  ```json
+  {
+    "feedbackType": "missing_step",
+    "targetType": "plan",
+    "targetId": "optional-plan-uuid",
+    "rating": 5,
+    "comments": "Ensure you bring 2 passport photos in blue background.",
+    "metadata": { "district": "Madurai" }
+  }
+  ```
+- **Response (`200 OK`)**:
+  ```json
+  {
+    "success": true,
+    "message": "Thank you for your feedback. Our verification team will review this report."
+  }
+  ```
+
