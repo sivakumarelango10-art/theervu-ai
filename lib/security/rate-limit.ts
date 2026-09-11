@@ -87,3 +87,11 @@ export function getClientIp(request: Request): string {
   }
   return '127.0.0.1'
 }
+
+/**
+ * Resets all active in-memory rate limits (primarily used in automated testing)
+ */
+export function resetRateLimits(): void {
+  rateLimitStore.clear()
+}
+

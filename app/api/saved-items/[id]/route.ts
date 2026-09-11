@@ -29,11 +29,13 @@ export async function DELETE(
       .eq('user_id', user.id)
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error('Saved item delete error:', error.message)
+      return NextResponse.json({ error: 'Failed to delete saved item' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 })
+    console.error('Saved item DELETE exception:', err?.message || err)
+    return NextResponse.json({ error: 'Failed to delete saved item' }, { status: 500 })
   }
 }

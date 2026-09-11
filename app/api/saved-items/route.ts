@@ -24,12 +24,14 @@ export async function GET() {
       .order('created_at', { ascending: false })
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error('Saved items fetch error:', error.message)
+      return NextResponse.json({ error: 'Failed to fetch saved items' }, { status: 500 })
     }
 
     return NextResponse.json({ savedItems: items || [] })
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 })
+    console.error('Saved items GET error:', err?.message || err)
+    return NextResponse.json({ error: 'Failed to fetch saved items' }, { status: 500 })
   }
 }
 
@@ -68,11 +70,13 @@ export async function POST(request: Request) {
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error('Saved items insert error:', error.message)
+      return NextResponse.json({ error: 'Failed to save item' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, savedItem: data })
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 })
+    console.error('Saved items POST error:', err?.message || err)
+    return NextResponse.json({ error: 'Failed to save item' }, { status: 500 })
   }
 }

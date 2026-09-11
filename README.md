@@ -15,11 +15,11 @@ TheervuAI is an AI-powered civic assistance platform designed to help users prep
 | **Icons** | Lucide React | Clean, consistent icon system |
 | **AI Engine** | Google Gemini API (`@google/genai`) | Model: `gemini-3.8-flash` with structured outputs and multimodal analysis |
 | **Authentication** | Supabase Auth (Exclusive Google OAuth) | One-click Google Sign-In with server session refresh |
-| **Database** | PostgreSQL via Supabase | Normalized schema with Row-Level Security (RLS) on all 10 tables |
+| **Database** | PostgreSQL via Supabase | Normalized schema with Row-Level Security (RLS) on all 11 tables |
 | **Storage** | Supabase Storage (`documents` bucket) | Private user-isolated document storage with MIME-type validation |
 | **Security** | In-Memory Sliding-Window Rate Limiter | Abuse prevention on all AI and upload endpoints |
 | **Validation** | Zod | Runtime request, response, and Section 6 structured schema validation |
-| **Test Runner** | Vitest | Fast unit, security, and integration test execution (29 passing tests) |
+| **Test Runner** | Vitest | Fast unit, security, and integration test execution (60 passing tests) |
 
 ---
 
@@ -80,18 +80,20 @@ pnpm build
 
 ## Complete Project Documentation
 
-1. [Google Gemini Setup Guide](GEMINI_SETUP.md) — Model verification (`gemini-3.8-flash`), configuration, and SDK usage.
-2. [Supabase Setup & Database Guide](SUPABASE_SETUP.md) — PostgreSQL connection, pooler, Google OAuth, and RLS policies.
-3. [API Documentation](API_DOCUMENTATION.md) — Reference for all 25 REST endpoints with Zod schemas.
-4. [Database Health Audit](DATABASE_HEALTH.md) — 11-table schema verification, foreign keys, triggers, and query consistency.
-5. [Security & Authorization Audit](SECURITY_AUDIT.md) — Defense-in-depth, token security, rate limiting, audio privacy, and IDOR protection.
-6. [Multimodal Document Intelligence Setup](MULTIMODAL_SETUP.md) — 9 workflows, file formats, and extraction schemas.
-7. [Regional Language Support Guide](LANGUAGE_SUPPORT.md) — 11 Indian languages, Unicode script detection, and Sarvam AI integration.
-8. [Voice System Setup & Architecture](VOICE_SETUP.md) — Speech-to-text, text-to-speech, browser APIs, and privacy safeguards.
-9. [Reminders & Deadline System](REMINDERS_SETUP.md) — Reminder schema, RLS policies, and dashboard integration.
-10. [Feedback & Quality Reporting](FEEDBACK_SYSTEM.md) — Feedback categories, abuse prevention, and verification triage.
-11. [Deployment Guide](DEPLOYMENT_GUIDE.md) — Step-by-step production deployment to Vercel with Supabase and Gemini.
-12. [Troubleshooting Guide](TROUBLESHOOTING.md) — Common diagnostic patterns, OAuth setup, and error recovery.
-13. [Phase 3 Verification Report](PHASE_3_VERIFICATION.md) — Phase 3 audit results, test logs, and stabilization certification.
-14. [Phase 4 Verification Report](PHASE_4_VERIFICATION.md) — Phase 4 multimodal, multilingual, voice, and personalization verification.
-
+1. [Phase 5 Verification Report](PHASE_5_VERIFICATION.md) — Comprehensive verification audit, test logs, and production certification.
+2. [Production Readiness Architecture](PRODUCTION_READINESS.md) — Operational architecture, SLAs, fallback policies, and monitoring.
+3. [Security Hardening Guide](SECURITY_HARDENING.md) — Defense-in-depth, token security, rate limiting, and IDOR protection.
+4. [Deployment Checklist](DEPLOYMENT_CHECKLIST.md) — Step-by-step pre-flight checklist for Vercel and Supabase.
+5. [Automated Testing Report](TESTING_REPORT.md) — Complete breakdown of 15 test suites and 60 passing tests.
+6. [Known Limitations & Scope](KNOWN_LIMITATIONS.md) — Transparent inventory of technical boundaries and browser dependencies.
+7. [API Documentation](API_DOCUMENTATION.md) — Complete reference for all 25 REST endpoints with Zod schemas.
+8. [Database Health Audit](DATABASE_HEALTH.md) — 11-table schema verification, foreign keys, triggers, and query consistency.
+9. [Google Gemini Setup Guide](GEMINI_SETUP.md) — Model verification, configuration, and SDK usage.
+10. [Supabase Setup & Database Guide](SUPABASE_SETUP.md) — PostgreSQL connection, pooler, Google OAuth, and RLS policies.
+11. [Multimodal Document Intelligence Setup](MULTIMODAL_SETUP.md) — 9 workflows, file formats, and extraction schemas.
+12. [Regional Language Support Guide](LANGUAGE_SUPPORT.md) — 11 Indian languages, Unicode script detection, and Sarvam AI integration.
+13. [Voice System Setup & Architecture](VOICE_SETUP.md) — Speech-to-text, text-to-speech, browser APIs, and privacy safeguards.
+14. [Reminders & Deadline System](REMINDERS_SETUP.md) — Reminder schema, RLS policies, and dashboard integration.
+15. [Feedback & Quality Reporting](FEEDBACK_SYSTEM.md) — Feedback categories, abuse prevention, and verification triage.
+16. [Deployment Guide](DEPLOYMENT_GUIDE.md) — Production deployment procedures to Vercel with Supabase and Gemini.
+17. [Troubleshooting Guide](TROUBLESHOOTING.md) — Common diagnostic patterns, OAuth setup, and error recovery.

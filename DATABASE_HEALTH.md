@@ -47,8 +47,8 @@ To ensure high performance under load, targeted B-tree indexes are configured:
 - `idx_preparation_items_plan_id` ON `preparation_items(preparation_plan_id)`
 - `idx_documents_user_id` ON `documents(user_id)`
 - `idx_saved_items_user` ON `saved_items(user_id, item_type)`
-- `idx_reminders_user_due` ON `reminders(user_id, due_date)`
-- `idx_reminders_completed` ON `reminders(user_id, is_completed)`
+- `idx_reminders_user_id` ON `reminders(user_id)`
+- `idx_reminders_scheduled_for` ON `reminders(scheduled_for asc)`
 
 ---
 

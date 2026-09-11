@@ -56,11 +56,13 @@ export async function PATCH(
       .eq('preparation_plan_id', planId)
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 })
+      console.error('Checklist item update error:', updateError.message)
+      return NextResponse.json({ error: 'Failed to update checklist item' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, itemId, isCompleted })
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 })
+    console.error('Checklist item PATCH exception:', err?.message || err)
+    return NextResponse.json({ error: 'Failed to update checklist item' }, { status: 500 })
   }
 }

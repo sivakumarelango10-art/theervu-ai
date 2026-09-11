@@ -10,8 +10,7 @@ import { createClient } from '@/lib/supabase/client'
 import { SUPPORTED_LANGUAGES } from '@/lib/ai/prompts'
 import { ArrowLeft, Check, Globe, Loader2, User } from 'lucide-react'
 
-const logoUrl =
-  'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/ChatGPT%20Image%20Sep%2011%2C%202026%2C%2012_32_08%20PM-ujooLO8049TXC3GzHMoaAhqYO0csBM.png'
+const logoUrl = '/theervu-logo.png'
 
 export default function SettingsPage() {
   const [fullName, setFullName] = React.useState('')

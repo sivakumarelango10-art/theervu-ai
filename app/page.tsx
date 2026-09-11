@@ -45,8 +45,7 @@ import { useVoiceInput } from '@/hooks/useVoiceInput'
 import { useVoiceOutput } from '@/hooks/useVoiceOutput'
 import { LANGUAGE_LIST, getLanguageByCode } from '@/lib/i18n/languages'
 
-const logoUrl =
-  'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/ChatGPT%20Image%20Sep%2011%2C%202026%2C%2012_32_08%20PM-ujooLO8049TXC3GzHMoaAhqYO0csBM.png'
+const logoUrl = '/theervu-logo.png'
 
 const querySchema = z.object({
   question: z
@@ -838,6 +837,80 @@ export default function Page() {
               <ArrowRight size={15} />
             </Link>
           </Button>
+        </div>
+      </section>
+
+      {/* Trust, Privacy & Official Verification Section */}
+      <section id="trust" className="border-t border-slate-100 bg-white py-16 scroll-mt-20">
+        <div className="mx-auto max-w-[1180px] px-5 lg:px-8">
+          <div className="max-w-2xl">
+            <span className="text-xs font-bold uppercase tracking-widest text-[#159b81]">
+              Transparency & Reliability
+            </span>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight text-[#102b57] sm:text-3xl">
+              Built on Trust, Privacy, and Safety
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-500">
+              When preparing for visits to public institutions, accuracy and clarity matter. Here is how TheervuAI safeguards your privacy and delivers verified guidance.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/50 p-6">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-[#159b81] ring-1 ring-teal-200">
+                <ShieldCheck size={20} />
+              </div>
+              <h3 className="mt-4 text-sm font-semibold text-[#102b57]">Verified Sources</h3>
+              <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                Procedures are cross-referenced with official portals (<code className="text-[11px] font-mono text-slate-600">.gov.in</code>, <code className="text-[11px] font-mono text-slate-600">.nic.in</code>) and verified departmental citizen charters.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/50 p-6">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-[#12366b] ring-1 ring-blue-200">
+                <FileText size={20} />
+              </div>
+              <h3 className="mt-4 text-sm font-semibold text-[#102b57]">Ephemeral Documents</h3>
+              <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                Uploaded notices and medical summaries are analyzed strictly in-memory. Documents are never stored or repurposed without your explicit consent.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/50 p-6">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600 ring-1 ring-purple-200">
+                <Mic size={20} />
+              </div>
+              <h3 className="mt-4 text-sm font-semibold text-[#102b57]">Zero Audio Storage</h3>
+              <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                Voice dictation runs on-device using browser speech recognition. No raw voice recordings are stored or retained on any server.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/50 p-6">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 ring-1 ring-amber-200">
+                <Compass size={20} />
+              </div>
+              <h3 className="mt-4 text-sm font-semibold text-[#102b57]">Civic Independence</h3>
+              <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                TheervuAI is an independent assistance guide. We are not a government agency and do not guarantee application approvals or replace professional counsel.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-8 rounded-xl border border-amber-200 bg-amber-50/60 p-4 text-xs leading-relaxed text-amber-900 flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-2.5 w-2.5 rounded-full bg-amber-500" />
+              <span>
+                <strong>Emergency Assistance Notice:</strong> For immediate medical, fire, or safety emergencies, call national dispatchers directly at <strong className="underline">112</strong> or <strong className="underline">108</strong>.
+              </span>
+            </div>
+            <a
+              href="tel:112"
+              className="font-semibold text-[#12366b] hover:underline"
+            >
+              Call 112 Dispatch →
+            </a>
+          </div>
         </div>
       </section>
 

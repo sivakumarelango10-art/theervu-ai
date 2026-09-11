@@ -391,42 +391,51 @@ Synthesize text into clear speech audio for users with reading difficulties.
 
 ---
 
-## 13. Phase 4: Reminders & Deadlines
+## 13. Reminders & Schedule Tracking
 
 ### `GET /api/reminders`
-List all active reminders for the authenticated user (sorted by `due_date asc`).
+List all reminders for the authenticated user (sorted by `scheduled_for asc`).
 
 ### `POST /api/reminders`
-Create a user-controlled reminder linked to a visit plan or document deadline.
+Create a user-controlled in-app reminder for an appointment, document expiry, or filing deadline.
 
 - **Request Body**:
   ```json
   {
     "title": "Visit RTO Anna Nagar for driving test",
     "description": "Slot booked for 10:30 AM. Carry Form 1A and fee receipt.",
-    "dueDate": "2026-09-18T10:30:00Z",
-    "reminderType": "appointment",
-    "priority": "high",
-    "targetPlanId": "optional-uuid"
+    "scheduled_for": "2026-09-18T10:30:00.000Z",
+    "reminder_type": "appointment",
+    "metadata": { "district": "Chennai" }
   }
   ```
+- **Supported `reminder_type` values**: `appointment`, `document_expiry`, `checklist`, `follow_up`.
 - **Response (`201 Created`)**:
   ```json
   {
     "id": "uuid",
     "title": "Visit RTO Anna Nagar for driving test",
-    "dueDate": "2026-09-18T10:30:00Z",
-    "isCompleted": false,
-    "priority": "high",
-    "createdAt": "2026-09-11T16:00:00Z"
+    "description": "Slot booked for 10:30 AM. Carry Form 1A and fee receipt.",
+    "scheduled_for": "2026-09-18T10:30:00.000Z",
+    "reminder_type": "appointment",
+    "status": "pending",
+    "created_at": "2026-09-11T16:00:00Z"
   }
   ```
 
 ### `PATCH /api/reminders/[id]`
-Toggle completion status or edit due date/title of a reminder (user ownership verified).
+Update status (`pending`, `completed`, `dismissed`) or modify title/scheduled time (user ownership verified).
+
+- **Request Body**:
+  ```json
+  {
+    "status": "completed"
+  }
+  ```
 
 ### `DELETE /api/reminders/[id]`
-Delete a reminder (user ownership verified).
+Permanently delete a reminder (user ownership verified).
+
 
 ---
 

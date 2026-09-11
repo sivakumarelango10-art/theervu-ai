@@ -85,19 +85,27 @@ export function AddReminderModal({ open, onOpenChange, onSuccess }: AddReminderM
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md p-6 bg-white rounded-2xl border border-slate-100 shadow-xl">
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold text-[#102b57] flex items-center gap-2">
-            <Bell size={20} className="text-[#159b81]" />
-            <span>Set a Preparation Reminder</span>
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 text-[#159b81] mb-2">
+            <Bell size={24} />
+          </div>
+          <DialogTitle className="text-center text-lg font-bold text-[#102b57]">
+            Set In-App Reminder
           </DialogTitle>
-          <DialogDescription className="text-xs text-slate-500">
-            Keep track of official appointment dates, counter visits, or document deadlines.
+          <DialogDescription className="text-center text-xs text-slate-500">
+            Keep track of visits, deadlines, and renewals in your dashboard. (SMS/email alerts are not sent).
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 mt-3">
+        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           {error && (
-            <div className="rounded-xl bg-red-50 p-3 text-xs text-red-600 border border-red-100">
+            <div className="rounded-lg bg-red-50 p-2.5 text-xs text-red-600 border border-red-200">
               {error}
+            </div>
+          )}
+
+          {scheduledFor && new Date(scheduledFor) < new Date() && (
+            <div className="rounded-lg bg-amber-50 p-2 text-xs text-amber-700 border border-amber-200">
+              Notice: The chosen date is in the past. It will be logged as an overdue or completed record.
             </div>
           )}
 

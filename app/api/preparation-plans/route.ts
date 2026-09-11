@@ -41,11 +41,13 @@ export async function GET() {
       .order('created_at', { ascending: false })
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error('Preparation plans fetch error:', error.message)
+      return NextResponse.json({ error: 'Failed to retrieve preparation plans' }, { status: 500 })
     }
 
     return NextResponse.json({ plans: plans || [] })
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 })
+    console.error('Preparation plans GET exception:', err?.message || err)
+    return NextResponse.json({ error: 'Failed to retrieve preparation plans' }, { status: 500 })
   }
 }

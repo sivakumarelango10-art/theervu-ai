@@ -19,8 +19,7 @@ import {
   Trash2,
 } from 'lucide-react'
 
-const logoUrl =
-  'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/ChatGPT%20Image%20Sep%2011%2C%202026%2C%2012_32_08%20PM-ujooLO8049TXC3GzHMoaAhqYO0csBM.png'
+const logoUrl = '/theervu-logo.png'
 
 export default function SavedItemsPage() {
   const [activeTab, setActiveTab] = React.useState<'plans' | 'reminders'>('plans')
@@ -252,6 +251,44 @@ export default function SavedItemsPage() {
         {/* Tab 2: Reminders */}
         {activeTab === 'reminders' && (
           <div className="mt-6">
+            {/* Reminder scope & notification permission banner */}
+            <div className="mb-5 rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div>
+                <p className="font-semibold text-[#102b57]">In-App Schedule Tracker</p>
+                <p className="text-slate-500 mt-0.5">
+                  Reminders track your appointment and filing dates in your dashboard. (SMS/email alerts are not sent).
+                </p>
+              </div>
+
+              {typeof window !== 'undefined' && 'Notification' in window && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (Notification.permission === 'default') {
+                      const res = await Notification.requestPermission()
+                      if (res === 'granted') {
+                        try {
+                          new Notification('TheervuAI Alerts Enabled', {
+                            body: 'Browser notifications are now active on this device.',
+                            icon: '/theervu-logo.png',
+                          })
+                        } catch {}
+                      }
+                    }
+                  }}
+                  className={`shrink-0 px-3 py-1.5 rounded-lg border font-medium transition-all ${
+                    Notification.permission === 'granted'
+                      ? 'border-teal-200 bg-teal-50 text-[#159b81]'
+                      : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  {Notification.permission === 'granted'
+                    ? '✓ Browser Alerts Active'
+                    : 'Enable Browser Alerts'}
+                </button>
+              )}
+            </div>
+
             {loading ? (
               <div className="space-y-4">
                 {[1, 2].map((n) => (

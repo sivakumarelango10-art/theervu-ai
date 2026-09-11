@@ -33,7 +33,8 @@ export async function GET() {
 
     return NextResponse.json({ profile: profile || { id: user.id, email: user.email } })
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 })
+    console.error('Profile GET error:', err?.message || err)
+    return NextResponse.json({ error: 'Failed to retrieve user profile' }, { status: 500 })
   }
 }
 
@@ -76,11 +77,13 @@ export async function PATCH(request: Request) {
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error('Profile update error:', error.message)
+      return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, profile: updated })
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 })
+    console.error('Profile PATCH exception:', err?.message || err)
+    return NextResponse.json({ error: 'Failed to process profile update' }, { status: 500 })
   }
 }

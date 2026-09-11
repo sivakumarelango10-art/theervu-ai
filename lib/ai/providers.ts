@@ -57,6 +57,14 @@ export function normalizeGeminiError(error: unknown): {
     }
   }
 
+  if (lower.includes('not found') || lower.includes('404') || lower.includes('is not supported') || lower.includes('model')) {
+    return {
+      userMessage: 'The requested AI model is not supported or not found. Operating in verified guidance mode.',
+      code: 'MODEL_NOT_FOUND',
+      isRateLimit: false,
+    }
+  }
+
   return {
     userMessage: 'We could not generate live AI guidance right now. Verified local guidance is provided.',
     code: 'GENERATION_FAILED',

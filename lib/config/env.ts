@@ -36,3 +36,35 @@ export const env = {
     isProduction: process.env.NODE_ENV === 'production',
   },
 }
+
+export interface EnvironmentStatus {
+  isSupabaseConfigured: boolean
+  isGeminiConfigured: boolean
+  isSarvamConfigured: boolean
+  isProduction: boolean
+  appUrl: string
+  warnings: string[]
+}
+
+export function validateEnvironment(): EnvironmentStatus {
+  const warnings: string[] = []
+
+  if (!env.supabase.isConfigured) {
+    warnings.push('Supabase is running in local fallback mode. Connect real Supabase credentials for cloud persistence.')
+  }
+  if (!env.ai.isGeminiConfigured) {
+    warnings.push('Google Gemini API key is not configured. Running in verified offline procedural guidance mode.')
+  }
+  if (!env.ai.isSarvamConfigured) {
+    warnings.push('Sarvam AI key is not configured. Indic translations will be served via Gemini engine.')
+  }
+
+  return {
+    isSupabaseConfigured: env.supabase.isConfigured,
+    isGeminiConfigured: env.ai.isGeminiConfigured,
+    isSarvamConfigured: env.ai.isSarvamConfigured,
+    isProduction: env.app.isProduction,
+    appUrl: env.app.url,
+    warnings,
+  }
+}
