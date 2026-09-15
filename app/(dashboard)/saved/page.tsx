@@ -2,12 +2,14 @@
 
 import * as React from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
+import dynamic from 'next/dynamic'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { UserNav } from '@/components/auth/UserNav'
-import { AddReminderModal } from '@/components/reminders/AddReminderModal'
-import { AddApplicationModal } from '@/components/applications/AddApplicationModal'
+import { useRealtimeSync } from '@/hooks/useRealtimeSync'
+import { broadcastRealtimeEvent } from '@/lib/realtime/broadcast'
 import {
   ArrowLeft,
   ArrowRight,
@@ -22,6 +24,15 @@ import {
   ShieldAlert,
   Trash2,
 } from 'lucide-react'
+
+const AddReminderModal = dynamic(
+  () => import('@/components/reminders/AddReminderModal').then((m) => m.AddReminderModal),
+  { ssr: false }
+)
+const AddApplicationModal = dynamic(
+  () => import('@/components/applications/AddApplicationModal').then((m) => m.AddApplicationModal),
+  { ssr: false }
+)
 
 const logoUrl = '/theervu-logo.png'
 
@@ -40,7 +51,7 @@ interface Reminder {
   id: string
   title: string
   description?: string
-  reminder_date: string
+  reminder_date?: string
   scheduled_for?: string
   status: string
   priority?: string
@@ -71,37 +82,42 @@ export default function SavedItemsPage() {
   const [reminderModalOpen, setReminderModalOpen] = React.useState(false)
   const [applicationModalOpen, setApplicationModalOpen] = React.useState(false)
 
-  React.useEffect(() => {
-    async function loadData() {
-      setLoading(true)
-      try {
-        const [savedRes, remindersRes, applicationsRes] = await Promise.all([
-          fetch('/api/saved-items').then((r) => r.json()).catch(() => ({ savedItems: [] })),
-          fetch('/api/reminders').then((r) => r.json()).catch(() => ({ reminders: [] })),
-          fetch('/api/applications').then((r) => r.json()).catch(() => ({ applications: [] })),
-        ])
+  const loadData = React.useCallback(async () => {
+    try {
+      const [savedRes, remindersRes, applicationsRes] = await Promise.all([
+        fetch('/api/saved-items').then((r) => r.json()).catch(() => ({ savedItems: [] })),
+        fetch('/api/reminders').then((r) => r.json()).catch(() => ({ reminders: [] })),
+        fetch('/api/applications').then((r) => r.json()).catch(() => ({ applications: [] })),
+      ])
 
-        if (savedRes.savedItems) {
-          setItems(savedRes.savedItems)
-        }
-        if (remindersRes.reminders) {
-          setReminders(remindersRes.reminders)
-        }
-        if (applicationsRes.applications) {
-          setApplications(applicationsRes.applications)
-        }
-      } catch (err) {
-        console.warn('Could not load dashboard data:', err)
-      } finally {
-        setLoading(false)
+      if (savedRes.savedItems) {
+        setItems(savedRes.savedItems)
       }
+      if (remindersRes.reminders) {
+        setReminders(remindersRes.reminders)
+      }
+      if (applicationsRes.applications) {
+        setApplications(applicationsRes.applications)
+      }
+    } catch (err) {
+      console.warn('Could not load dashboard data:', err)
+    } finally {
+      setLoading(false)
     }
-
-    loadData()
   }, [])
+
+  React.useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  // Real-Time Subscriptions: listen to changes across tabs & Supabase Postgres
+  useRealtimeSync({ table: 'application_trackers', onUpdate: () => loadData() })
+  useRealtimeSync({ table: 'reminders', onUpdate: () => loadData() })
+  useRealtimeSync({ table: 'saved_items', onUpdate: () => loadData() })
 
   async function handleDeleteSaved(id: string) {
     setItems((prev) => prev.filter((i) => i.id !== id))
+    broadcastRealtimeEvent('SAVED_ITEMS_CHANGED', 'delete', id)
     try {
       await fetch(`/api/saved-items/${id}`, { method: 'DELETE' })
     } catch (err) {
@@ -114,6 +130,7 @@ export default function SavedItemsPage() {
     setReminders((prev) =>
       prev.map((r) => (r.id === id ? { ...r, status: nextStatus } : r))
     )
+    broadcastRealtimeEvent('REMINDERS_CHANGED', 'update', id)
 
     try {
       await fetch(`/api/reminders/${id}`, {
@@ -128,6 +145,7 @@ export default function SavedItemsPage() {
 
   async function handleDeleteReminder(id: string) {
     setReminders((prev) => prev.filter((i) => i.id !== id))
+    broadcastRealtimeEvent('REMINDERS_CHANGED', 'delete', id)
     try {
       await fetch(`/api/reminders/${id}`, { method: 'DELETE' })
     } catch (err) {
@@ -139,6 +157,7 @@ export default function SavedItemsPage() {
     setApplications((prev) =>
       prev.map((a) => (a.id === id ? { ...a, status: newStatus } : a))
     )
+    broadcastRealtimeEvent('APPLICATIONS_CHANGED', 'update', id)
 
     try {
       await fetch(`/api/applications/${id}`, {
@@ -153,6 +172,7 @@ export default function SavedItemsPage() {
 
   async function handleDeleteApplication(id: string) {
     setApplications((prev) => prev.filter((a) => a.id !== id))
+    broadcastRealtimeEvent('APPLICATIONS_CHANGED', 'delete', id)
     try {
       await fetch(`/api/applications/${id}`, { method: 'DELETE' })
     } catch (err) {
@@ -186,7 +206,7 @@ export default function SavedItemsPage() {
         <div className="mx-auto flex h-16 max-w-[1180px] items-center justify-between px-5 lg:px-8">
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center" aria-label="TheervuAI home">
-              <img src={logoUrl} alt="TheervuAI" width={144} height={36} className="h-9 w-auto object-contain" />
+              <Image src={logoUrl} alt="TheervuAI" width={144} height={36} priority className="h-9 w-auto object-contain" />
             </Link>
             <span className="hidden sm:inline text-xs font-semibold text-slate-400 uppercase tracking-widest">
               My Dashboard
@@ -553,8 +573,10 @@ export default function SavedItemsPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 {reminders.map((reminder) => {
                   const isDone = reminder.status === 'completed'
-                  const scheduledDate = reminder.scheduled_for ? new Date(reminder.scheduled_for) : new Date(reminder.reminder_date)
-                  const isPast = scheduledDate < new Date() && !isDone
+                  const rawDate = reminder.scheduled_for || reminder.reminder_date
+                  const scheduledDate = rawDate ? new Date(rawDate) : new Date()
+                  const isValidDate = !isNaN(scheduledDate.getTime())
+                  const isPast = isValidDate && scheduledDate < new Date() && !isDone
 
                   return (
                     <Card
@@ -621,10 +643,12 @@ export default function SavedItemsPage() {
                       <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
                         <span className="flex items-center gap-1">
                           <Clock size={12} className={isPast ? 'text-amber-500' : 'text-slate-400'} />
-                          {scheduledDate.toLocaleString('en-IN', {
-                            dateStyle: 'medium',
-                            timeStyle: 'short',
-                          })}
+                          {isValidDate
+                            ? scheduledDate.toLocaleString('en-IN', {
+                                dateStyle: 'medium',
+                                timeStyle: 'short',
+                              })
+                            : 'Scheduled'}
                         </span>
                         {isPast && (
                           <span className="text-[10px] font-semibold text-amber-600">
@@ -664,13 +688,19 @@ export default function SavedItemsPage() {
       <AddReminderModal
         open={reminderModalOpen}
         onOpenChange={setReminderModalOpen}
-        onSuccess={(newReminder) => setReminders((prev) => [newReminder, ...prev])}
+        onSuccess={(newReminder: any) => {
+          setReminders((prev) => [newReminder, ...prev])
+          broadcastRealtimeEvent('REMINDERS_CHANGED', 'insert')
+        }}
       />
 
       <AddApplicationModal
         isOpen={applicationModalOpen}
         onClose={() => setApplicationModalOpen(false)}
-        onSuccess={(newApp) => setApplications((prev) => [newApp, ...prev])}
+        onSuccess={(newApp: any) => {
+          setApplications((prev) => [newApp, ...prev])
+          broadcastRealtimeEvent('APPLICATIONS_CHANGED', 'insert')
+        }}
       />
     </div>
   )

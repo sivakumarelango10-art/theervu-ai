@@ -14,6 +14,8 @@ export {
   normalizeGeminiError,
 } from '@/lib/ai/gemini'
 
+export { createChatEventStream } from '@/lib/ai/stream'
 export { geminiConfig, getGeminiConfig } from '@/lib/ai/config'
 export * from '@/lib/ai/types'
 export * from '@/lib/ai/schemas'
+

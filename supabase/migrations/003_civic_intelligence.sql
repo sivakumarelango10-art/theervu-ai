@@ -35,18 +35,31 @@ create index if not exists idx_services_verification on public.services(verifica
 create table if not exists public.application_trackers (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
-  application_name text not null,
-  department text not null,
-  application_number text,
-  submission_date timestamptz default now(),
-  expected_timeline text,
-  status text not null default 'submitted' check (status in ('draft', 'documents_prepared', 'ready_to_apply', 'submitted', 'under_review', 'info_requested', 'approved', 'rejected', 'completed', 'unknown')),
-  next_followup_date timestamptz,
-  official_tracking_url text,
+  service_id uuid references public.services(id) on delete set null,
+  service_name text not null,
+  authority text,
+  reference_number text,
+  portal_url text,
+  status text not null default 'submitted' check (status in ('draft', 'submitted', 'under_review', 'info_requested', 'approved', 'rejected', 'completed', 'unknown')),
+  submission_date date default current_date,
+  last_status_date timestamptz default now(),
+  next_action text,
+  next_action_deadline date,
   notes text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+-- Ensure column compatibility across migrations and environments
+alter table public.application_trackers
+  add column if not exists service_id uuid references public.services(id) on delete set null,
+  add column if not exists service_name text,
+  add column if not exists authority text,
+  add column if not exists reference_number text,
+  add column if not exists portal_url text,
+  add column if not exists last_status_date timestamptz default now(),
+  add column if not exists next_action text,
+  add column if not exists next_action_deadline date;
 
 create index if not exists idx_application_trackers_user on public.application_trackers(user_id);
 create index if not exists idx_application_trackers_status on public.application_trackers(user_id, status);

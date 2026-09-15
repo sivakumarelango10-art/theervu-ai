@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { chatRequestSchema } from '@/lib/validation/schemas'
-import { generateChatResponse } from '@/lib/ai/client'
+import { generateChatResponse, createChatEventStream } from '@/lib/ai/client'
 import { createClient } from '@/lib/supabase/server'
 import { env } from '@/lib/config/env'
 import { getClientIp, checkRateLimit } from '@/lib/security/rate-limit'
@@ -35,7 +35,80 @@ export async function POST(request: Request) {
 
     const { question, conversationId, preferredLanguage } = result.data
 
-    // Generate Gemini or Fallback response
+    // Check if client requested streaming (via query param, header, or body)
+    const url = new URL(request.url)
+    const wantsStream =
+      url.searchParams.get('stream') === 'true' ||
+      (typeof json === 'object' && json !== null && (json as Record<string, unknown>).stream === true) ||
+      request.headers.get('accept')?.includes('text/event-stream')
+
+    if (wantsStream) {
+      const stream = createChatEventStream(
+        question,
+        [],
+        preferredLanguage,
+        async (fullText, meta) => {
+          // Asynchronously persist conversation if Supabase is configured
+          if (!env.supabase.isConfigured) return
+          try {
+            const supabase = await createClient()
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+
+            let activeId = conversationId
+            if (!activeId) {
+              const title = question.slice(0, 45) + (question.length > 45 ? '...' : '')
+              const { data: conv } = await supabase
+                .from('conversations')
+                .insert({
+                  user_id: user.id,
+                  title,
+                  category: meta.isEmergency ? 'emergency' : 'general',
+                })
+                .select('id')
+                .single()
+              if (conv) activeId = conv.id
+            }
+
+            if (activeId) {
+              await supabase.from('messages').insert([
+                {
+                  conversation_id: activeId,
+                  role: 'user',
+                  content: question,
+                },
+                {
+                  conversation_id: activeId,
+                  role: 'assistant',
+                  content: fullText,
+                  metadata: {
+                    summary: meta.summary,
+                    sources: meta.sources,
+                    disclaimer: meta.disclaimer,
+                  },
+                },
+              ])
+            }
+          } catch (dbErr) {
+            logger.warn('Could not persist streamed conversation:', {
+              endpoint: '/api/ai/chat',
+              metadata: { error: dbErr instanceof Error ? dbErr.message : 'unknown' },
+            })
+          }
+        }
+      )
+
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache, no-transform',
+          'Connection': 'keep-alive',
+          'X-Accel-Buffering': 'no',
+        },
+      })
+    }
+
+    // Generate standard JSON response
     const aiResponse = await generateChatResponse(
       question,
       [],
@@ -121,3 +194,4 @@ export async function POST(request: Request) {
     )
   }
 }
+

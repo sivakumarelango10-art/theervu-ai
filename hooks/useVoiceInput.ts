@@ -10,14 +10,83 @@ export function useVoiceInput(options?: {
 }) {
   const [state, setState] = React.useState<VoiceRecordingState>('idle')
   const [transcript, setTranscript] = React.useState<string>('')
+  const [audioLevel, setAudioLevel] = React.useState<number>(0)
   const [error, setError] = React.useState<VoiceError | null>(null)
   const recognitionRef = React.useRef<any>(null)
+  const audioContextRef = React.useRef<AudioContext | null>(null)
+  const analyserRef = React.useRef<AnalyserNode | null>(null)
+  const mediaStreamRef = React.useRef<MediaStream | null>(null)
+  const animFrameRef = React.useRef<number | null>(null)
 
   const isSupported = React.useMemo(() => {
     if (typeof window === 'undefined') return false
     return Boolean(
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     )
+  }, [])
+
+  const stopAudioMeter = React.useCallback(() => {
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current)
+      animFrameRef.current = null
+    }
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((t) => t.stop())
+      mediaStreamRef.current = null
+    }
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      try {
+        audioContextRef.current.close()
+      } catch {}
+      audioContextRef.current = null
+    }
+    analyserRef.current = null
+    setAudioLevel(0)
+  }, [])
+
+  const startAudioMeter = React.useCallback(async () => {
+    if (typeof window === 'undefined' || !navigator.mediaDevices?.getUserMedia) return
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+      mediaStreamRef.current = stream
+
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+      if (!AudioCtx) return
+
+      const ctx = new AudioCtx()
+      audioContextRef.current = ctx
+
+      const analyser = ctx.createAnalyser()
+      analyser.fftSize = 256
+      analyser.smoothingTimeConstant = 0.5
+      analyserRef.current = analyser
+
+      const source = ctx.createMediaStreamSource(stream)
+      source.connect(analyser)
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount)
+
+      const updateLevel = () => {
+        if (!analyserRef.current) return
+        analyserRef.current.getByteFrequencyData(dataArray)
+
+        let sum = 0
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i]
+        }
+        const average = sum / dataArray.length
+        // Normalize between 0 and 100
+        const normalized = Math.min(100, Math.round((average / 128) * 100))
+        setAudioLevel(normalized)
+
+        animFrameRef.current = requestAnimationFrame(updateLevel)
+      }
+
+      updateLevel()
+    } catch {
+      // Non-blocking: dictation can still proceed via SpeechRecognition even if getUserMedia audio meter fails
+    }
   }, [])
 
   const startListening = React.useCallback(
@@ -43,6 +112,7 @@ export function useVoiceInput(options?: {
         } catch {}
       }
 
+      stopAudioMeter()
       setError(null)
       setState('requesting')
 
@@ -56,6 +126,7 @@ export function useVoiceInput(options?: {
 
       recognition.onstart = () => {
         setState('recording')
+        startAudioMeter()
       }
 
       recognition.onresult = (event: any) => {
@@ -90,10 +161,12 @@ export function useVoiceInput(options?: {
 
         setError({ code: errCode, message: errMsg })
         setState('error')
+        stopAudioMeter()
       }
 
       recognition.onend = () => {
         setState('idle')
+        stopAudioMeter()
       }
 
       try {
@@ -104,9 +177,10 @@ export function useVoiceInput(options?: {
           message: err?.message || 'Could not initiate microphone recording.',
         })
         setState('error')
+        stopAudioMeter()
       }
     },
-    [options]
+    [options, startAudioMeter, stopAudioMeter]
   )
 
   const stopListening = React.useCallback(() => {
@@ -115,8 +189,9 @@ export function useVoiceInput(options?: {
         recognitionRef.current.stop()
       } catch {}
     }
+    stopAudioMeter()
     setState('idle')
-  }, [])
+  }, [stopAudioMeter])
 
   const cancelListening = React.useCallback(() => {
     if (recognitionRef.current) {
@@ -124,10 +199,11 @@ export function useVoiceInput(options?: {
         recognitionRef.current.abort()
       } catch {}
     }
+    stopAudioMeter()
     setTranscript('')
     setError(null)
     setState('idle')
-  }, [])
+  }, [stopAudioMeter])
 
   const resetTranscript = React.useCallback(() => {
     setTranscript('')
@@ -141,14 +217,16 @@ export function useVoiceInput(options?: {
           recognitionRef.current.abort()
         } catch {}
       }
+      stopAudioMeter()
     }
-  }, [])
+  }, [stopAudioMeter])
 
   return {
     state,
     isListening: state === 'recording' || state === 'requesting',
     isSupported,
     transcript,
+    audioLevel,
     error,
     startListening,
     stopListening,
@@ -156,3 +234,4 @@ export function useVoiceInput(options?: {
     resetTranscript,
   }
 }
+

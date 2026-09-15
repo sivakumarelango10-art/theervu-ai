@@ -31,6 +31,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
+import Image from 'next/image'
+import dynamic from 'next/dynamic'
 import {
   Form,
   FormControl,
@@ -39,13 +41,21 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { UserNav } from '@/components/auth/UserNav'
-import { DocumentUploadModal } from '@/components/documents/DocumentUploadModal'
-import { FeedbackModal } from '@/components/feedback/FeedbackModal'
 import { useVoiceInput } from '@/hooks/useVoiceInput'
 import { useVoiceOutput } from '@/hooks/useVoiceOutput'
 import { LANGUAGE_LIST, getLanguageByCode } from '@/lib/i18n/languages'
 
+const DocumentUploadModal = dynamic(
+  () => import('@/components/documents/DocumentUploadModal').then((m) => m.DocumentUploadModal),
+  { ssr: false }
+)
+const FeedbackModal = dynamic(
+  () => import('@/components/feedback/FeedbackModal').then((m) => m.FeedbackModal),
+  { ssr: false }
+)
+
 const logoUrl = '/theervu-logo.png'
+
 
 const querySchema = z.object({
   question: z
@@ -129,6 +139,7 @@ export default function Page() {
 
   // AI Response state
   const [loading, setLoading] = React.useState(false)
+  const [isStreaming, setIsStreaming] = React.useState(false)
   const [aiResponse, setAiResponse] = React.useState<{
     answer: string
     summary: string
@@ -161,27 +172,81 @@ export default function Page() {
 
   async function onSubmit(values: QueryFormValues) {
     setLoading(true)
-    setAiResponse(null)
+    setIsStreaming(true)
+    setAiResponse({
+      summary: 'Analyzing your situation...',
+      answer: '',
+      steps: [],
+      sources: [],
+    })
     voiceOutput.stop()
 
     try {
-      const res = await fetch('/api/ai/chat', {
+      const res = await fetch('/api/ai/chat?stream=true', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           question: values.question,
           preferredLanguage: selectedLang,
+          stream: true,
         }),
       })
 
-      const data = await res.json()
-      if (res.ok) {
-        setAiResponse(data)
-      } else {
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: 'Request failed.' }))
         setAiResponse({
           summary: 'Could not complete request.',
-          answer: data.error || 'Please try again.',
+          answer: errData.error || 'Please try again.',
         })
+        return
+      }
+
+      const contentType = res.headers.get('content-type') || ''
+      if (contentType.includes('text/event-stream') && res.body) {
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let accumulatedAnswer = ''
+        let buffer = ''
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || ''
+
+          for (const line of lines) {
+            const trimmed = line.trim()
+            if (trimmed.startsWith('data: ')) {
+              try {
+                const event = JSON.parse(trimmed.slice(6))
+                if (event.type === 'token' && event.content) {
+                  accumulatedAnswer += event.content
+                  setAiResponse((prev) => ({
+                    summary:
+                      prev?.summary === 'Analyzing your situation...'
+                        ? 'Guidance for your situation'
+                        : prev?.summary || 'Guidance for your situation',
+                    answer: accumulatedAnswer,
+                    steps: prev?.steps,
+                    sources: prev?.sources,
+                    disclaimer: prev?.disclaimer,
+                    isEmergency: prev?.isEmergency,
+                  }))
+                } else if (event.type === 'done' && event.data) {
+                  setAiResponse((prev) => ({
+                    ...event.data,
+                    answer: accumulatedAnswer || event.data.answer || prev?.answer || '',
+                  }))
+                }
+              } catch {}
+            }
+          }
+        }
+      } else {
+        const data = await res.json()
+        setAiResponse(data)
       }
     } catch {
       setAiResponse({
@@ -189,6 +254,7 @@ export default function Page() {
         answer: 'We could not reach the assistance server. Please check your internet connection and try again.',
       })
     } finally {
+      setIsStreaming(false)
       setLoading(false)
     }
   }
@@ -222,11 +288,12 @@ export default function Page() {
       <header className="sticky top-0 z-50 border-b border-slate-100 bg-white/95 backdrop-blur-md">
         <div className="mx-auto flex h-[72px] max-w-[1180px] items-center justify-between px-5 lg:px-8">
           <Link href="#top" className="flex items-center" aria-label="TheervuAI home">
-            <img
+            <Image
               src={logoUrl}
               alt="TheervuAI"
               width={160}
               height={40}
+              priority
               className="h-10 w-auto object-contain transition-transform hover:scale-[1.02]"
             />
           </Link>
@@ -426,9 +493,25 @@ export default function Page() {
                                   {voiceInput.isListening ? <MicOff size={16} /> : <Mic size={16} />}
                                 </button>
                                 {voiceInput.isListening && (
-                                  <span className="text-[11px] font-semibold text-rose-600 animate-pulse pl-1">
-                                    Listening...
-                                  </span>
+                                  <div className="flex items-center gap-1.5 pl-1" aria-label="Audio active">
+                                    <span className="text-[11px] font-semibold text-rose-600">
+                                      Listening
+                                    </span>
+                                    <div className="flex items-end gap-0.5 h-3.5" title={`Audio level: ${voiceInput.audioLevel}%`}>
+                                      <span
+                                        className="w-1 bg-rose-500 rounded-full transition-all duration-75"
+                                        style={{ height: `${Math.max(4, (voiceInput.audioLevel * 14) / 100)}px` }}
+                                      />
+                                      <span
+                                        className="w-1 bg-rose-500 rounded-full transition-all duration-75"
+                                        style={{ height: `${Math.max(6, (voiceInput.audioLevel * 18) / 100)}px` }}
+                                      />
+                                      <span
+                                        className="w-1 bg-rose-500 rounded-full transition-all duration-75"
+                                        style={{ height: `${Math.max(4, (voiceInput.audioLevel * 12) / 100)}px` }}
+                                      />
+                                    </div>
+                                  </div>
                                 )}
 
                                 {/* Regional Language Dropdown */}
@@ -548,6 +631,9 @@ export default function Page() {
 
                       <p className="text-slate-700 whitespace-pre-line text-xs font-normal">
                         {aiResponse.answer}
+                        {isStreaming && (
+                          <span className="inline-block w-1.5 h-3.5 bg-[#159b81] ml-0.5 animate-pulse align-middle" />
+                        )}
                       </p>
 
                       {aiResponse.steps && aiResponse.steps.length > 0 && (
@@ -926,7 +1012,7 @@ export default function Page() {
       <footer className="border-t border-slate-100 bg-white">
         <div className="mx-auto flex max-w-[1180px] flex-col gap-6 px-5 py-8 sm:flex-row sm:items-center sm:justify-between lg:px-8">
           <div className="flex items-center gap-3">
-            <img src={logoUrl} alt="TheervuAI" width={144} height={36} className="h-9 w-auto object-contain" />
+            <Image src={logoUrl} alt="TheervuAI" width={144} height={36} className="h-9 w-auto object-contain" />
             <span className="hidden text-xs text-slate-400 sm:inline">
               Clarity for what comes next.
             </span>
